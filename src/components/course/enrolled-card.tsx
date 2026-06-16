@@ -47,7 +47,7 @@ export function EnrolledCard({ course, onPress }: EnrolledCardProps) {
       {/* Thumbnail */}
       <View style={styles.thumbContainer}>
         {course.thumbnail ? (
-          <Image source={{ uri: course.thumbnail }} style={styles.thumb} contentFit="cover" />
+          <Image source={{ uri: course.thumbnail }} style={styles.thumb} contentFit="contain" />
         ) : (
           <View style={[styles.thumb, { backgroundColor: fallbackColor, justifyContent: 'center', alignItems: 'center' }]}>
             <Text style={styles.thumbInitial}>{course.title.charAt(0)}</Text>
@@ -112,17 +112,16 @@ const styles = StyleSheet.create({
   },
   thumbContainer: {
     position: 'relative',
-    width: 110,
+    width: 120,
     flexShrink: 0,
   },
   thumb: {
-    width: 110,
+    width: '100%',
     height: '100%',
-    minHeight: 100,
   },
   thumbInitial: {
     color: 'rgba(255,255,255,0.7)',
-    fontSize: 28,
+    fontSize: 20,
     fontFamily: Fonts.extraBold,
   },
   completedOverlay: {
@@ -133,18 +132,18 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
-    padding: 12,
-    gap: 6,
+    padding: 14,
+    gap: 5,
     justifyContent: 'center',
   },
   title: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: Fonts.bold,
-    lineHeight: 18,
+    lineHeight: 19,
     letterSpacing: -0.1,
   },
   tutor: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: Fonts.regular,
   },
   progressSection: {
@@ -163,7 +162,7 @@ const styles = StyleSheet.create({
     borderRadius: 99,
   },
   pct: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: Fonts.bold,
     minWidth: 32,
     textAlign: 'right',
@@ -178,7 +177,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   continueBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: Fonts.bold,
     color: '#fff',
   },

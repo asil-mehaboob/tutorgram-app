@@ -44,11 +44,6 @@ export default function MyLearningScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 14, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <View style={styles.titleRow}>
           <Text style={[styles.heading, { color: theme.text }]}>My Learning</Text>
-          {!isLoading && courses.length > 0 && (
-            <View style={[styles.countBadge, { backgroundColor: theme.primaryLight }]}>
-              <Text style={[styles.countText, { color: theme.primary }]}>{courses.length}</Text>
-            </View>
-          )}
         </View>
 
         {/* ─── Underline tabs ──────────────────────── */}
@@ -143,17 +138,7 @@ export default function MyLearningScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
         >
-          {/* Progress summary bar */}
-          {activeTab === 'inprogress' && inProgress.length > 0 && (
-            <View style={[styles.summaryBar, { backgroundColor: theme.primaryLight, borderColor: theme.primaryLight }]}>
-              <Text style={[styles.summaryText, { color: theme.primary }]}>
-                {inProgress.length} course{inProgress.length !== 1 ? 's' : ''} in progress
-                {completed.length > 0 ? ` · ${completed.length} completed` : ''}
-              </Text>
-            </View>
-          )}
-
-          {displayList.map((course) => (
+{displayList.map((course) => (
             <EnrolledCard key={course.courseId} course={course} />
           ))}
         </ScrollView>
