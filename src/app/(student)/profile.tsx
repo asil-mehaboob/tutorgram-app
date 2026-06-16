@@ -211,17 +211,22 @@ export default function ProfileScreen() {
             <MenuItem
               icon={Question}
               label="Help Centre"
-              onPress={() => Linking.openURL('https://tutorgram.app/help')}
+              onPress={() => Linking.openURL('https://student.mytutorgram.com/help')}
             />
             <MenuItem
               icon={Shield}
               label="Privacy Policy"
-              onPress={() => Linking.openURL('https://tutorgram.app/privacy')}
+              onPress={() => Linking.openURL('https://mytutorgram.com/privacy-policy')}
             />
             <MenuItem
               icon={FileText}
               label="Terms of Service"
-              onPress={() => Linking.openURL('https://tutorgram.app/terms')}
+              onPress={() => Linking.openURL('https://mytutorgram.com/terms')}
+            />
+            <MenuItem
+              icon={FileText}
+              label="Refund Policy"
+              onPress={() => Linking.openURL('https://mytutorgram.com/refund-policy')}
               isLast
             />
           </MenuGroup>

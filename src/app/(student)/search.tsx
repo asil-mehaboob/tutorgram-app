@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,19 +12,48 @@ import {
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { MagnifyingGlass, X, Star } from 'phosphor-react-native';
+import { MagnifyingGlass, X, Star, ClockCounterClockwise, TrendUp } from 'phosphor-react-native';
+import * as SecureStore from 'expo-secure-store';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { getCatalogCourses } from '@/lib/api/catalog';
 import type { CatalogCourse } from '@/lib/api/catalog';
 
-const SUGGESTED = ['Web Development', 'Data Science', 'UI/UX Design', 'Python', 'Machine Learning', 'Photography'];
+const POPULAR = [
+  'Web Development',
+  'Data Science',
+  'UI/UX Design',
+  'Python',
+  'Machine Learning',
+  'Photography',
+];
+
+const RECENT_KEY = 'recent_searches';
+const MAX_RECENT = 8;
+
+async function loadRecent(): Promise<string[]> {
+  try {
+    const raw = await SecureStore.getItemAsync(RECENT_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveRecent(items: string[]) {
+  await SecureStore.setItemAsync(RECENT_KEY, JSON.stringify(items));
+}
 
 export default function SearchScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [submitted, setSubmitted] = useState('');
+  const [recent, setRecent] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadRecent().then(setRecent);
+  }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ['search', submitted],
@@ -33,14 +63,41 @@ export default function SearchScreen() {
 
   const results: CatalogCourse[] = data?.items ?? [];
 
+  const runSearch = useCallback((term: string) => {
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    setQuery(trimmed);
+    setSubmitted(trimmed);
+    setRecent((prev) => {
+      const next = [trimmed, ...prev.filter((r) => r !== trimmed)].slice(0, MAX_RECENT);
+      saveRecent(next);
+      return next;
+    });
+  }, []);
+
   function handleSubmit() {
-    if (query.trim().length > 0) setSubmitted(query.trim());
+    runSearch(query);
   }
 
   function handleClear() {
     setQuery('');
     setSubmitted('');
   }
+
+  function removeRecent(item: string) {
+    setRecent((prev) => {
+      const next = prev.filter((r) => r !== item);
+      saveRecent(next);
+      return next;
+    });
+  }
+
+  function clearAllRecent() {
+    setRecent([]);
+    saveRecent([]);
+  }
+
+  const showSuggestions = submitted.length === 0;
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
@@ -66,25 +123,69 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {/* ── No query — suggestions ───────────────────── */}
-      {submitted.length === 0 && (
-        <View style={styles.suggestionsSection}>
-          <Text style={[styles.suggestionsTitle, { color: theme.textSecondary }]}>
-            POPULAR SEARCHES
-          </Text>
-          <View style={styles.chips}>
-            {SUGGESTED.map((s) => (
-              <Pressable
-                key={s}
-                onPress={() => { setQuery(s); setSubmitted(s); }}
-                style={[styles.chip, { borderColor: theme.border, backgroundColor: theme.surfaceEl }]}
-              >
-                <MagnifyingGlass size={13} color={theme.textSecondary} weight="regular" />
-                <Text style={[styles.chipText, { color: theme.text }]}>{s}</Text>
-              </Pressable>
-            ))}
+      {/* ── Suggestions ─────────────────────────────── */}
+      {showSuggestions && (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.suggestions, { paddingBottom: insets.bottom + 32 }]}
+        >
+          {/* Recent searches */}
+          {recent.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>RECENT</Text>
+                <Pressable onPress={clearAllRecent} hitSlop={8}>
+                  <Text style={[styles.clearAll, { color: theme.primary }]}>Clear all</Text>
+                </Pressable>
+              </View>
+              <View style={[styles.listCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                {recent.map((item, i) => (
+                  <Pressable
+                    key={item}
+                    onPress={() => runSearch(item)}
+                    style={({ pressed }) => [
+                      styles.listRow,
+                      i < recent.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
+                      { backgroundColor: pressed ? theme.surfaceEl : 'transparent' },
+                    ]}
+                  >
+                    <ClockCounterClockwise size={16} color={theme.textSecondary} weight="regular" />
+                    <Text style={[styles.listLabel, { color: theme.text }]} numberOfLines={1}>{item}</Text>
+                    <Pressable
+                      onPress={(e) => { e.stopPropagation(); removeRecent(item); }}
+                      hitSlop={8}
+                    >
+                      <X size={14} color={theme.textSecondary} weight="bold" />
+                    </Pressable>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Popular searches */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>POPULAR</Text>
+            </View>
+            <View style={[styles.listCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              {POPULAR.map((item, i) => (
+                <Pressable
+                  key={item}
+                  onPress={() => runSearch(item)}
+                  style={({ pressed }) => [
+                    styles.listRow,
+                    i < POPULAR.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
+                    { backgroundColor: pressed ? theme.surfaceEl : 'transparent' },
+                  ]}
+                >
+                  <TrendUp size={16} color={theme.textSecondary} weight="regular" />
+                  <Text style={[styles.listLabel, { color: theme.text }]} numberOfLines={1}>{item}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
+        </ScrollView>
       )}
 
       {/* ── Loading ──────────────────────────────────── */}
@@ -203,32 +304,44 @@ const styles = StyleSheet.create({
   },
 
   /* Suggestions */
-  suggestionsSection: {
+  suggestions: {
     paddingHorizontal: 16,
     paddingTop: 24,
-    gap: 14,
+    gap: 24,
   },
-  suggestionsTitle: {
+  section: {
+    gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
     fontSize: 11,
     fontFamily: Fonts.bold,
     letterSpacing: 0.8,
   },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  clearAll: {
+    fontSize: 12,
+    fontFamily: Fonts.semiBold,
   },
-  chip: {
+  listCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  listRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 8,
-    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    gap: 12,
   },
-  chipText: {
-    fontSize: 13,
+  listLabel: {
+    flex: 1,
+    fontSize: 14,
     fontFamily: Fonts.medium,
   },
 

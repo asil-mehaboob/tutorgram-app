@@ -13,7 +13,6 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Bell,
   ArrowRight,
   GraduationCap,
 } from 'phosphor-react-native';
@@ -127,10 +126,7 @@ export default function HomeScreen() {
               contentFit="contain"
             />
             <View style={styles.topActions}>
-              <Pressable style={[styles.iconBtn, { borderColor: theme.border }]} hitSlop={8}>
-                <Bell size={20} color={theme.text} weight="regular" />
-              </Pressable>
-              <View style={[styles.avatarCircle, { backgroundColor: theme.primary }]}>
+<View style={[styles.avatarCircle, { backgroundColor: theme.primary }]}>
                 <Text style={styles.avatarText}>{userInitial}</Text>
               </View>
             </View>
@@ -232,15 +228,7 @@ const styles = StyleSheet.create({
   },
   logo: { width: 120, height: 30 },
   topActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarCircle: {
+avatarCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
