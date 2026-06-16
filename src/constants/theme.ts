@@ -1,55 +1,54 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import '@/global.css';
 
 import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#1C1D1F',
+    textSecondary: '#6A6F73',
+    background: '#FFFFFF',
+    surface: '#FFFFFF',
+    surfaceEl: '#F7F9FA',
+    border: '#D1D7DC',
+    primary: '#4052e6',
+    primaryDark: '#2D3DD1',
+    primaryLight: '#EEEFFE',
+    primaryForeground: '#FFFFFF',
+    error: '#D32F2F',
+    star: '#E59819',
+    success: '#1E6B1E',
+    bestseller: '#EC7211',
+    bestsellerLight: '#FFF3E0',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F7F9FA',
+    textSecondary: '#9E9E9E',
+    background: '#1C1D1F',
+    surface: '#2D2F31',
+    surfaceEl: '#3E4143',
+    border: '#3E4143',
+    primary: '#6475FF',
+    primaryDark: '#4052e6',
+    primaryLight: '#1E2247',
+    primaryForeground: '#FFFFFF',
+    error: '#EF5350',
+    star: '#F5AE00',
+    success: '#4ADE80',
+    bestseller: '#EC7211',
+    bestsellerLight: '#3D1F00',
   },
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+export const Fonts = {
+  regular: 'PlusJakartaSans-Regular',
+  medium: 'PlusJakartaSans-Medium',
+  semiBold: 'PlusJakartaSans-SemiBold',
+  bold: 'PlusJakartaSans-Bold',
+  extraBold: 'PlusJakartaSans-ExtraBold',
+  mono: Platform.select({ ios: 'ui-monospace', default: 'monospace' }) ?? 'monospace',
+};
 
 export const Spacing = {
   half: 2,
@@ -63,3 +62,26 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+export const Shadows = {
+  card: Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.09,
+      shadowRadius: 10,
+    },
+    android: { elevation: 3 },
+    default: {},
+  }) ?? {},
+  sm: Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+    },
+    android: { elevation: 1 },
+    default: {},
+  }) ?? {},
+} as const;
