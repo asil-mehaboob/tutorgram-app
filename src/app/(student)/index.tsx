@@ -78,7 +78,7 @@ function CourseRow({ title, subtitle, courses, isLoading }: CourseRowProps) {
             <CourseCard
               course={item}
               width={CARD_W}
-              onPress={() => router.push(`/(student)/course/${item.slug}` as never)}
+              onPress={() => router.push(`/course/${item.slug}` as never)}
             />
           )}
         />

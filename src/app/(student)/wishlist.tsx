@@ -111,7 +111,7 @@ function WishlistCard({
 
   return (
     <Pressable
-    onPress={() => router.push(`/(student)/course/${item.course.slug}` as never)}
+    onPress={() => router.push(`/course/${item.course.slug}` as never)}
     style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
   >
       {item.course.thumbnail ? (

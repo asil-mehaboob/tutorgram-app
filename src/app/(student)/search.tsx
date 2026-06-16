@@ -248,7 +248,7 @@ function SearchResultRow({ course, theme }: { course: CatalogCourse; theme: Retu
 
   return (
     <Pressable
-    onPress={() => router.push(`/(student)/course/${course.slug}` as never)}
+    onPress={() => router.push(`/course/${course.slug}` as never)}
     style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.85 : 1 }]}
   >
       {course.thumbnail ? (
