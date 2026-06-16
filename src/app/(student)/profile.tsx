@@ -5,6 +5,7 @@ import {
   PencilSimple,
   Lock,
   Bell,
+  Sunlight,
   Certificate,
   Receipt,
   Heart,
@@ -177,6 +178,12 @@ export default function ProfileScreen() {
               icon={Bell}
               label="Notifications"
               onPress={() => router.push('/(student)/notification-settings')}
+            />
+            <MenuItem
+              icon={Sunlight}
+              label="Appearance"
+              subtitle="Light, dark, or system"
+              onPress={() => router.push('/(student)/appearance-settings')}
               isLast
             />
           </MenuGroup>

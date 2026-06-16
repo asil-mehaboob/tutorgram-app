@@ -85,6 +85,7 @@ export default function StudentLayout() {
         }}
       />
       {/* Sub-screens — hidden from the tab bar */}
+      <Tabs.Screen name="appearance-settings" options={{ href: null }} />
       <Tabs.Screen name="edit-profile" options={{ href: null }} />
       <Tabs.Screen name="change-password" options={{ href: null }} />
       <Tabs.Screen name="notification-settings" options={{ href: null }} />
