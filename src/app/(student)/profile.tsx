@@ -1,5 +1,4 @@
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -45,12 +44,11 @@ function MenuItem({ icon: Icon, label, subtitle, onPress, destructive, isLast }:
         { backgroundColor: pressed ? theme.surfaceEl : 'transparent' },
       ]}
     >
-      <View style={[
-        styles.menuIconWrap,
-        { backgroundColor: destructive ? '#FEF2F2' : theme.primaryLight },
-      ]}>
-        <Icon size={16} color={destructive ? theme.error : theme.primary} weight="regular" />
-      </View>
+      <Icon
+        size={18}
+        color={destructive ? theme.error : theme.textSecondary}
+        weight="regular"
+      />
       <View style={styles.menuTextBlock}>
         <Text style={[styles.menuLabel, { color: destructive ? theme.error : theme.text }]}>
           {label}
@@ -60,7 +58,7 @@ function MenuItem({ icon: Icon, label, subtitle, onPress, destructive, isLast }:
         )}
       </View>
       {!destructive && (
-        <CaretRight size={15} color={theme.border} weight="bold" />
+        <CaretRight size={14} color={theme.border} weight="bold" />
       )}
     </Pressable>
   );
@@ -114,14 +112,13 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       >
-        {/* ─── Header strip ──────────────────────────── */}
+        {/* ─── Header ────────────────────────────────── */}
         <View style={[styles.headerStrip, { paddingTop: insets.top + 14, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Account</Text>
         </View>
 
         {/* ─── Profile card ──────────────────────────── */}
-        <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          {/* Avatar */}
+        <View style={[styles.profileCard, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
           <View style={[styles.avatarCircle, { backgroundColor: theme.primary }]}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
@@ -135,13 +132,13 @@ export default function ProfileScreen() {
           </View>
 
           <Pressable style={[styles.editBtn, { borderColor: theme.border }]} hitSlop={8}>
-            <PencilSimple size={16} color={theme.text} weight="regular" />
+            <PencilSimple size={15} color={theme.text} weight="regular" />
             <Text style={[styles.editBtnText, { color: theme.text }]}>Edit</Text>
           </Pressable>
         </View>
 
         {/* ─── Stats ─────────────────────────────────── */}
-        <View style={[styles.statsRow, { borderTopColor: theme.border, borderBottomColor: theme.border }]}>
+        <View style={[styles.statsRow, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
           {STATS.map((s, i) => (
             <View
               key={s.label}
@@ -213,21 +210,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   avatarCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
   },
   avatarText: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: Fonts.extraBold,
   },
   profileInfo: { flex: 1, gap: 3 },
   userName: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: Fonts.extraBold,
     letterSpacing: -0.3,
   },
@@ -264,7 +261,6 @@ const styles = StyleSheet.create({
   /* Stats */
   statsRow: {
     flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   statItem: {
@@ -308,14 +304,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    gap: 12,
-  },
-  menuIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
+    gap: 14,
   },
   menuTextBlock: { flex: 1, gap: 1 },
   menuLabel: {

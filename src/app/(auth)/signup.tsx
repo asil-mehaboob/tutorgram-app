@@ -13,7 +13,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eye, EyeSlash } from 'phosphor-react-native';
+import { Eye, EyeSlash, Check } from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { Input } from '@/components/ui/input';
@@ -179,7 +179,7 @@ export default function SignupScreen() {
                   ]}
                 >
                   {i < stepIndex ? (
-                    <Text style={styles.stepDotText}>✓</Text>
+                    <Check size={12} color="#fff" weight="bold" />
                   ) : (
                     <Text style={styles.stepDotText}>{i + 1}</Text>
                   )}

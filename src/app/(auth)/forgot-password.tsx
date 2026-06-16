@@ -3,6 +3,7 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, Vie
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CheckCircle } from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { Input } from '@/components/ui/input';
@@ -72,9 +73,7 @@ export default function ForgotPasswordScreen() {
             </>
           ) : (
             <View style={styles.successBlock}>
-              <View style={[styles.successCircle, { backgroundColor: theme.primaryLight }]}>
-                <Text style={[styles.successIcon, { color: theme.primary }]}>✓</Text>
-              </View>
+              <CheckCircle size={64} color={theme.primary} weight="duotone" />
               <Text style={[styles.heading, { color: theme.text, textAlign: 'center' }]}>
                 Check your inbox
               </Text>
@@ -124,17 +123,6 @@ const styles = StyleSheet.create({
   successBlock: {
     alignItems: 'center',
     gap: 16,
-  },
-  successCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  successIcon: {
-    fontSize: 32,
-    fontFamily: Fonts.bold,
   },
   backLoginBtn: { alignSelf: 'stretch', marginTop: 8 },
 });

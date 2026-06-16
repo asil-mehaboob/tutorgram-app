@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -12,9 +12,14 @@ import {
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, MagnifyingGlass, ArrowRight } from 'phosphor-react-native';
+import {
+  Bell,
+  MagnifyingGlass,
+  ArrowRight,
+  GraduationCap,
+} from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
-import { Fonts, Spacing } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { CourseCard } from '@/components/course/course-card';
 import { getCatalogCourses } from '@/lib/api/catalog';
 import { useAuth } from '@/lib/auth/context';
@@ -107,12 +112,6 @@ export default function HomeScreen() {
     queryFn: () => getCatalogCourses({ limit: 12, sortBy: 'rated' }),
   });
 
-  const { data: filteredData, isLoading: filteredLoading } = useQuery({
-    queryKey: ['catalog-courses', activeCategory],
-    queryFn: () => getCatalogCourses({ limit: 20, sortBy: activeCategory === 'all' ? 'popular' : activeCategory }),
-    enabled: activeCategory !== 'all' && activeCategory !== 'popular' && activeCategory !== 'newest' && activeCategory !== 'rated',
-  });
-
   const popularCourses = featuredData?.items ?? [];
   const newCourses = newData?.items ?? [];
   const ratedCourses = ratedData?.items ?? [];
@@ -121,21 +120,23 @@ export default function HomeScreen() {
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]}>
         {/* ── Top bar (sticky) ─────────────────────────── */}
-        <View style={[styles.topBar, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-          <Image
-            source={require('@/assets/images/logo.svg')}
-            style={styles.logo}
-            contentFit="contain"
-          />
-          <View style={styles.topActions}>
-            <Pressable style={[styles.iconBtn, { borderColor: theme.border }]} hitSlop={8}>
-              <MagnifyingGlass size={20} color={theme.text} weight="regular" />
-            </Pressable>
-            <Pressable style={[styles.iconBtn, { borderColor: theme.border }]} hitSlop={8}>
-              <Bell size={20} color={theme.text} weight="regular" />
-            </Pressable>
-            <View style={[styles.avatarCircle, { backgroundColor: theme.primary }]}>
-              <Text style={styles.avatarText}>{userInitial}</Text>
+        <View style={[styles.topBarOuter, { paddingTop: insets.top, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+          <View style={styles.topBarRow}>
+            <Image
+              source={require('@/assets/images/logo.svg')}
+              style={styles.logo}
+              contentFit="contain"
+            />
+            <View style={styles.topActions}>
+              <Pressable style={[styles.iconBtn, { borderColor: theme.border }]} hitSlop={8}>
+                <MagnifyingGlass size={20} color={theme.text} weight="regular" />
+              </Pressable>
+              <Pressable style={[styles.iconBtn, { borderColor: theme.border }]} hitSlop={8}>
+                <Bell size={20} color={theme.text} weight="regular" />
+              </Pressable>
+              <View style={[styles.avatarCircle, { backgroundColor: theme.primary }]}>
+                <Text style={styles.avatarText}>{userInitial}</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -173,16 +174,16 @@ export default function HomeScreen() {
         </ScrollView>
 
         {/* ── Welcome banner ───────────────────────────── */}
-        <View style={[styles.welcomeBanner, { backgroundColor: theme.primaryLight }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.welcomeGreet, { color: theme.primary }]}>Welcome back, {firstName}!</Text>
+        <View style={[styles.welcomeBanner, { backgroundColor: theme.primaryLight, borderColor: theme.primaryLight }]}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={[styles.welcomeGreet, { color: theme.primary }]}>
+              Welcome back, {firstName}
+            </Text>
             <Text style={[styles.welcomeHeadline, { color: theme.text }]}>
               Keep learning,{'\n'}keep growing.
             </Text>
           </View>
-          <View style={[styles.welcomeIllustration, { backgroundColor: theme.primary }]}>
-            <Text style={styles.welcomeEmoji}>🎓</Text>
-          </View>
+          <GraduationCap size={52} color={theme.primary} weight="duotone" />
         </View>
 
         {/* ── Search bar ───────────────────────────────── */}
@@ -204,7 +205,7 @@ export default function HomeScreen() {
             isLoading={featuredLoading}
           />
 
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <View style={[styles.divider, { backgroundColor: theme.surfaceEl }]} />
 
           <CourseRow
             title="New & Noteworthy"
@@ -213,7 +214,7 @@ export default function HomeScreen() {
             isLoading={newLoading}
           />
 
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <View style={[styles.divider, { backgroundColor: theme.surfaceEl }]} />
 
           <CourseRow
             title="Highest Rated"
@@ -223,44 +224,25 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* ── Value props ──────────────────────────────── */}
-        <View style={[styles.valueSection, { borderTopColor: theme.border, backgroundColor: theme.surfaceEl }]}>
-          <Text style={[styles.valueTitle, { color: theme.text }]}>Why learn with Tutorgram?</Text>
-          <View style={styles.valueGrid}>
-            {VALUE_PROPS.map((v) => (
-              <View key={v.label} style={[styles.valueCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <Text style={styles.valueEmoji}>{v.emoji}</Text>
-                <Text style={[styles.valueLabel, { color: theme.text }]}>{v.label}</Text>
-                <Text style={[styles.valueDesc, { color: theme.textSecondary }]}>{v.desc}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
 }
 
-const VALUE_PROPS = [
-  { emoji: '🏆', label: 'Expert instructors', desc: 'Learn from industry professionals' },
-  { emoji: '📜', label: 'Earn certificates', desc: 'Get recognized on completion' },
-  { emoji: '♾️', label: 'Lifetime access', desc: 'Learn at your own pace, anytime' },
-  { emoji: '📱', label: 'Learn anywhere', desc: 'On any device, anytime you want' },
-];
-
 const styles = StyleSheet.create({
   root: { flex: 1 },
 
   /* Top bar */
-  topBar: {
+  topBarOuter: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  topBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 10,
   },
   logo: { width: 120, height: 30 },
   topActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -289,7 +271,6 @@ const styles = StyleSheet.create({
   pillsRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    gap: 0,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   pill: {
@@ -313,12 +294,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 14,
+    borderWidth: 1,
   },
   welcomeGreet: {
     fontSize: 12,
     fontFamily: Fonts.semiBold,
     letterSpacing: 0.2,
-    marginBottom: 4,
   },
   welcomeHeadline: {
     fontSize: 20,
@@ -326,15 +307,6 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     letterSpacing: -0.4,
   },
-  welcomeIllustration: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.85,
-  },
-  welcomeEmoji: { fontSize: 28 },
 
   /* Search */
   searchSection: {
@@ -344,7 +316,7 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 13,
@@ -404,44 +376,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   divider: {
-    height: 6,
-    marginHorizontal: 0,
+    height: 8,
   },
 
-  /* Value props */
-  valueSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 24,
-    marginTop: 8,
-    borderTopWidth: 6,
-  },
-  valueTitle: {
-    fontSize: 18,
-    fontFamily: Fonts.extraBold,
-    letterSpacing: -0.4,
-    marginBottom: 16,
-  },
-  valueGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  valueCard: {
-    width: '47%',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 14,
-    gap: 6,
-  },
-  valueEmoji: { fontSize: 22 },
-  valueLabel: {
-    fontSize: 13,
-    fontFamily: Fonts.bold,
-    letterSpacing: -0.1,
-  },
-  valueDesc: {
-    fontSize: 11,
-    fontFamily: Fonts.regular,
-    lineHeight: 15,
-  },
 });
