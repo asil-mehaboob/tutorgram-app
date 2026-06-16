@@ -14,7 +14,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import {
   Bell,
-  MagnifyingGlass,
   ArrowRight,
   GraduationCap,
 } from 'phosphor-react-native';
@@ -129,9 +128,6 @@ export default function HomeScreen() {
             />
             <View style={styles.topActions}>
               <Pressable style={[styles.iconBtn, { borderColor: theme.border }]} hitSlop={8}>
-                <MagnifyingGlass size={20} color={theme.text} weight="regular" />
-              </Pressable>
-              <Pressable style={[styles.iconBtn, { borderColor: theme.border }]} hitSlop={8}>
                 <Bell size={20} color={theme.text} weight="regular" />
               </Pressable>
               <View style={[styles.avatarCircle, { backgroundColor: theme.primary }]}>
@@ -184,16 +180,6 @@ export default function HomeScreen() {
             </Text>
           </View>
           <GraduationCap size={52} color={theme.primary} weight="duotone" />
-        </View>
-
-        {/* ── Search bar ───────────────────────────────── */}
-        <View style={[styles.searchSection, { backgroundColor: theme.background }]}>
-          <Pressable style={[styles.searchBar, { backgroundColor: theme.surfaceEl, borderColor: theme.border }]}>
-            <MagnifyingGlass size={18} color={theme.textSecondary} />
-            <Text style={[styles.searchPlaceholder, { color: theme.textSecondary }]}>
-              Search courses, topics, instructors…
-            </Text>
-          </Pressable>
         </View>
 
         {/* ── Course sections ──────────────────────────── */}
@@ -306,26 +292,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.extraBold,
     lineHeight: 26,
     letterSpacing: -0.4,
-  },
-
-  /* Search */
-  searchSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 10,
-  },
-  searchPlaceholder: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    flex: 1,
   },
 
   /* Sections */

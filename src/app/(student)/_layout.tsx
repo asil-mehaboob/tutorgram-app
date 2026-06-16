@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet } from 'react-native';
-import { House, Books, UserCircle } from 'phosphor-react-native';
+import { StyleSheet } from 'react-native';
+import { House, MagnifyingGlass, Books, UserCircle } from 'phosphor-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 
@@ -9,17 +10,24 @@ type TabIconProps = { focused: boolean; color: string };
 function HomeIcon({ focused, color }: TabIconProps) {
   return <House size={24} color={color} weight={focused ? 'fill' : 'regular'} />;
 }
-
+function SearchIcon({ focused, color }: TabIconProps) {
+  return <MagnifyingGlass size={24} color={color} weight={focused ? 'bold' : 'regular'} />;
+}
 function LearningIcon({ focused, color }: TabIconProps) {
   return <Books size={24} color={color} weight={focused ? 'fill' : 'regular'} />;
 }
-
 function ProfileIcon({ focused, color }: TabIconProps) {
   return <UserCircle size={24} color={color} weight={focused ? 'fill' : 'regular'} />;
 }
 
+const TAB_CONTENT_HEIGHT = 56;
+
 export default function StudentLayout() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+
+  // Add bottom inset so the tab bar clears the phone's gesture nav bar / home indicator
+  const tabBarHeight = TAB_CONTENT_HEIGHT + insets.bottom;
 
   return (
     <Tabs
@@ -31,9 +39,9 @@ export default function StudentLayout() {
           backgroundColor: theme.surface,
           borderTopColor: theme.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === 'android' ? 64 : 80,
+          height: tabBarHeight,
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'android' ? 10 : 0,
+          paddingBottom: insets.bottom,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -1 },
           shadowOpacity: 0.06,
@@ -53,6 +61,13 @@ export default function StudentLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ focused, color }) => <HomeIcon focused={focused} color={color as string} />,
+        }}
+      />
+      <Tabs.Screen
+        name="search"
+        options={{
+          title: 'Search',
+          tabBarIcon: ({ focused, color }) => <SearchIcon focused={focused} color={color as string} />,
         }}
       />
       <Tabs.Screen
