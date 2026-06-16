@@ -19,7 +19,6 @@ import {
   CaretDown,
   CaretUp,
   Certificate,
-  Check,
   Clock,
   DeviceMobile,
   PlayCircle,
@@ -31,6 +30,7 @@ import {
   Users,
   UserCircle,
 } from 'phosphor-react-native';
+import { RichText } from '@/components/ui/rich-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { getCourseDetail } from '@/lib/api/catalog';
@@ -167,13 +167,9 @@ export default function CourseDetailScreen() {
       ? `₹${course.price.toLocaleString('en-IN')}`
       : null;
 
-  const learnItems: string[] = Array.isArray(course.whatYouLearn) ? course.whatYouLearn : [];
-  const requirementItems: string[] = Array.isArray(course.requirements)
-    ? course.requirements
-    : Array.isArray(course.prerequisites)
-    ? course.prerequisites
-    : [];
-  const whoIsForItems: string[] = Array.isArray(course.whoIsFor) ? course.whoIsFor : [];
+  const learnHtml: string | null = course.whatYouLearn ?? null;
+  const requirementsHtml: string | null = course.requirements ?? course.prerequisites ?? null;
+  const whoIsForHtml: string | null = course.whoIsFor ?? null;
   const outcomeItems: string[] = Array.isArray(course.learningOutcomes) ? course.learningOutcomes : [];
 
   const full = Math.floor(course.averageRating);
@@ -239,7 +235,10 @@ export default function CourseDetailScreen() {
           <Text style={styles.heroTitle}>{course.title}</Text>
 
           {/* Short description — expandable */}
-          <Pressable onPress={() => descIsTruncatable && setDescExpanded((p) => !p)} activeOpacity={0.8}>
+          <Pressable
+            onPress={() => descIsTruncatable && setDescExpanded((p) => !p)}
+            style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+          >
             <Text style={styles.heroDesc}>{displayedDesc}</Text>
             {descIsTruncatable && (
               <Text style={styles.heroDescToggle}>
@@ -333,25 +332,18 @@ export default function CourseDetailScreen() {
             <>
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>About this course</Text>
-                <Text style={styles.aboutText}>{course.detailedDescription}</Text>
+                <RichText html={course.detailedDescription} />
               </View>
               <View style={styles.sep} />
             </>
           )}
 
           {/* What you'll learn */}
-          {learnItems.length > 0 && (
+          {!!learnHtml && (
             <>
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>What you'll learn</Text>
-                <View style={styles.checkList}>
-                  {learnItems.map((item, i) => (
-                    <View key={i} style={styles.checkRow}>
-                      <Check size={16} color={theme.primary} weight="bold" style={{ marginTop: 2 }} />
-                      <Text style={styles.checkText}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
+                <RichText html={learnHtml} />
               </View>
               <View style={styles.sep} />
             </>
@@ -376,18 +368,11 @@ export default function CourseDetailScreen() {
           )}
 
           {/* Who this course is for */}
-          {whoIsForItems.length > 0 && (
+          {!!whoIsForHtml && (
             <>
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Who this course is for</Text>
-                <View style={styles.checkList}>
-                  {whoIsForItems.map((item, i) => (
-                    <View key={i} style={styles.checkRow}>
-                      <UserCircle size={16} color={theme.primary} weight="regular" style={{ marginTop: 2 }} />
-                      <Text style={styles.checkText}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
+                <RichText html={whoIsForHtml} />
               </View>
               <View style={styles.sep} />
             </>
@@ -428,18 +413,11 @@ export default function CourseDetailScreen() {
           <View style={styles.sep} />
 
           {/* Requirements */}
-          {requirementItems.length > 0 && (
+          {!!requirementsHtml && (
             <>
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Requirements</Text>
-                <View style={styles.bulletList}>
-                  {requirementItems.map((item, i) => (
-                    <View key={i} style={styles.bulletRow}>
-                      <View style={styles.bullet} />
-                      <Text style={styles.bulletText}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
+                <RichText html={requirementsHtml} />
               </View>
               <View style={styles.sep} />
             </>
@@ -483,9 +461,7 @@ export default function CourseDetailScreen() {
                               {section.title}
                             </Text>
                             {!!section.description && (
-                              <Text style={styles.accordionHeaderDesc} numberOfLines={isOpen ? undefined : 1}>
-                                {section.description}
-                              </Text>
+                              <RichText html={section.description} />
                             )}
                             <Text style={styles.accordionHeaderMeta}>
                               {section.lessons.length} lesson
@@ -509,10 +485,17 @@ export default function CourseDetailScreen() {
                                   lIdx < section.lessons.length - 1 && styles.lessonItemBorder,
                                 ]}
                               >
-                                {getLessonIcon(lesson.type, '#666')}
-                                <Text style={styles.lessonItemTitle} numberOfLines={2}>
-                                  {lesson.title}
-                                </Text>
+                                <View style={styles.lessonItemIcon}>
+                                  {getLessonIcon(lesson.type, '#666')}
+                                </View>
+                                <View style={styles.lessonItemBody}>
+                                  <Text style={styles.lessonItemTitle}>
+                                    {lesson.title}
+                                  </Text>
+                                  {!!lesson.description && (
+                                    <RichText html={lesson.description} />
+                                  )}
+                                </View>
                                 <View style={styles.lessonItemRight}>
                                   {lesson.isFreePreview && (
                                     <Text style={[styles.previewTag, { color: theme.primary }]}>
@@ -587,7 +570,7 @@ export default function CourseDetailScreen() {
               </View>
             </View>
             {!!course.instructor.bio && (
-              <Text style={styles.instructorBio}>{course.instructor.bio}</Text>
+              <RichText html={course.instructor.bio} />
             )}
           </View>
         </View>
@@ -809,23 +792,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
 
-  aboutText: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: '#3A3A3A',
-    lineHeight: 22,
-  },
-
-  checkList: { gap: 10 },
-  checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  checkText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: '#1C1D1F',
-    lineHeight: 20,
-  },
-
   pillsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   skillPill: {
     flexDirection: 'row',
@@ -845,23 +811,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     color: '#1C1D1F',
     flex: 1,
-  },
-
-  bulletList: { gap: 10 },
-  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  bullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#555',
-    marginTop: 7,
-  },
-  bulletText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: '#1C1D1F',
-    lineHeight: 20,
   },
 
   contentMeta: {
@@ -895,13 +844,6 @@ const styles = StyleSheet.create({
     color: '#1C1D1F',
     lineHeight: 20,
   },
-  accordionHeaderDesc: {
-    fontSize: 12,
-    fontFamily: Fonts.regular,
-    color: '#888',
-    lineHeight: 17,
-    marginTop: 2,
-  },
   accordionHeaderMeta: {
     fontSize: 12,
     fontFamily: Fonts.regular,
@@ -915,17 +857,18 @@ const styles = StyleSheet.create({
   },
   lessonItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: 16,
     paddingVertical: 11,
     gap: 10,
   },
+  lessonItemIcon: { paddingTop: 3 },
+  lessonItemBody: { flex: 1, gap: 4 },
   lessonItemBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E0E0E0',
   },
   lessonItemTitle: {
-    flex: 1,
     fontSize: 13,
     fontFamily: Fonts.regular,
     color: '#1C1D1F',
@@ -967,13 +910,6 @@ const styles = StyleSheet.create({
   },
   instructorMetaText: { fontSize: 12, fontFamily: Fonts.regular, color: '#666' },
   instructorMetaDot: { color: '#CCC', fontSize: 13 },
-  instructorBio: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: '#444',
-    lineHeight: 21,
-  },
-
   /* ── Bottom bar ── */
   bottomBar: {
     position: 'absolute',

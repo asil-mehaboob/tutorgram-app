@@ -232,17 +232,17 @@ export default function CoursePreviewScreen() {
 
             {/* Left: skip · play · skip · time */}
             <View style={styles.rowLeft}>
-              <Pressable onPress={() => skip(-10)} style={({ p }) => [styles.btn, p && styles.btnPressed] as any} hitSlop={8}>
+              <Pressable onPress={() => skip(-10)} style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]} hitSlop={8}>
                 <Rewind size={18} color="#fff" weight="fill" />
               </Pressable>
 
-              <Pressable onPress={togglePlay} style={({ p }) => [styles.btn, p && styles.btnPressed] as any} hitSlop={8}>
+              <Pressable onPress={togglePlay} style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]} hitSlop={8}>
                 {isPlaying
                   ? <Pause size={22} color="#fff" weight="fill" />
                   : <Play size={22} color="#fff" weight="fill" />}
               </Pressable>
 
-              <Pressable onPress={() => skip(10)} style={({ p }) => [styles.btn, p && styles.btnPressed] as any} hitSlop={8}>
+              <Pressable onPress={() => skip(10)} style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]} hitSlop={8}>
                 <FastForward size={18} color="#fff" weight="fill" />
               </Pressable>
 

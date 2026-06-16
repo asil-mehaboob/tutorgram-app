@@ -4,6 +4,7 @@ export type CourseLesson = {
   id: string;
   sectionId: string;
   title: string;
+  description: string | null;
   type: 'VIDEO' | 'ARTICLE' | 'QUIZ' | string;
   duration: number | null;
   isFreePreview: boolean;
@@ -38,11 +39,11 @@ export type CourseDetail = {
   totalDuration: number;
   totalSections: number;
   totalLessons: number;
-  whatYouLearn: string[];
-  whoIsFor: string[] | null;
-  prerequisites: string[] | null;
+  whatYouLearn: string | null;
+  whoIsFor: string | null;
+  prerequisites: string | null;
   learningOutcomes: string[] | null;
-  requirements: string[] | null;
+  requirements: string | null;
   category: { id: string; name: string; slug: string } | null;
   subCategory: { id: string; name: string; slug: string } | null;
   instructor: {

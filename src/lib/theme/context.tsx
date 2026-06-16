@@ -8,7 +8,7 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 type ThemeContextValue = {
   preference: ThemePreference;
   setPreference: (pref: ThemePreference) => void;
-  colors: typeof Colors.light;
+  colors: typeof Colors.light | typeof Colors.dark;
   resolvedTheme: 'light' | 'dark';
 };
 
