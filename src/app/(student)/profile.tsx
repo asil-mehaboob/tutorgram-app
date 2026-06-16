@@ -5,7 +5,7 @@ import {
   PencilSimple,
   Lock,
   Bell,
-  Sunlight,
+  CircleHalf,
   Certificate,
   Receipt,
   Heart,
@@ -180,7 +180,7 @@ export default function ProfileScreen() {
               onPress={() => router.push('/(student)/notification-settings')}
             />
             <MenuItem
-              icon={Sunlight}
+              icon={CircleHalf}
               label="Appearance"
               subtitle="Light, dark, or system"
               onPress={() => router.push('/(student)/appearance-settings')}
