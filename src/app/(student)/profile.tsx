@@ -76,10 +76,10 @@ function MenuGroup({ title, children, theme }: { title: string; children: React.
 }
 
 const STATS = [
-  { icon: Books, label: 'Enrolled', value: '12', color: '#4052e6' },
-  { icon: CheckCircle, label: 'Completed', value: '4', color: '#1E6B1E' },
-  { icon: Trophy, label: 'Certificates', value: '2', color: '#E59819' },
-  { icon: Clock, label: 'Hours', value: '38', color: '#DB2777' },
+  { icon: Books, label: 'Enrolled', value: '12' },
+  { icon: CheckCircle, label: 'Completed', value: '4' },
+  { icon: Trophy, label: 'Certificates', value: '2' },
+  { icon: Clock, label: 'Hours', value: '38' },
 ];
 
 export default function ProfileScreen() {
@@ -147,7 +147,7 @@ export default function ProfileScreen() {
                 i < STATS.length - 1 && { borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: theme.border },
               ]}
             >
-              <s.icon size={18} color={s.color} weight="fill" />
+              <s.icon size={18} color={theme.primary} weight="regular" />
               <Text style={[styles.statValue, { color: theme.text }]}>{s.value}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{s.label}</Text>
             </View>
