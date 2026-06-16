@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +10,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useVideoPlayer, VideoView } from 'expo-video';
 import { Image } from 'expo-image';
 import {
   ArrowLeft,
@@ -44,8 +42,6 @@ import type { CourseSection, CourseLesson } from '@/lib/api/catalog';
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const HERO_BG = '#1A2236';
-const { width: SW } = Dimensions.get('window');
-const VIDEO_H = Math.round(SW * (9 / 16));
 
 const LEVEL_LABEL: Record<string, string> = {
   BEGINNER: 'Beginner',
@@ -87,10 +83,6 @@ export default function CourseDetailScreen() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [descExpanded, setDescExpanded] = useState(false);
   const [enrolledLocally, setEnrolledLocally] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-
-  // useVideoPlayer must be called unconditionally before any early returns
-  const videoPlayer = useVideoPlayer(null, (p) => { p.loop = false; });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['course-detail', courseIdOrSlug],
@@ -130,14 +122,13 @@ export default function CourseDetailScreen() {
     setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
-  async function handlePreviewToggle() {
-    if (!showPreview && course?.promoVideoUrl) {
-      await videoPlayer.replaceAsync({ uri: course.promoVideoUrl });
-      videoPlayer.play();
-    } else {
-      videoPlayer.pause();
+  function handlePreviewOpen() {
+    if (course?.promoVideoUrl) {
+      router.push({
+        pathname: '/course/preview',
+        params: { uri: course.promoVideoUrl, title: course.title },
+      });
     }
-    setShowPreview((p) => !p);
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -322,33 +313,17 @@ export default function CourseDetailScreen() {
           {/* Watch preview — bottom of hero */}
           {hasPromo && (
             <Pressable
-              onPress={handlePreviewToggle}
+              onPress={handlePreviewOpen}
               style={({ pressed }) => [styles.previewRow, pressed && { opacity: 0.75 }]}
             >
               <View style={styles.previewIconWrap}>
                 <PlayCircle size={20} color="#fff" weight="fill" />
               </View>
-              <Text style={styles.previewRowLabel}>
-                {showPreview ? 'Close preview' : 'Watch course preview'}
-              </Text>
-              {!showPreview && <ArrowRight size={16} color="rgba(255,255,255,0.6)" weight="bold" />}
+              <Text style={styles.previewRowLabel}>Watch course preview</Text>
+              <ArrowRight size={16} color="rgba(255,255,255,0.6)" weight="bold" />
             </Pressable>
           )}
         </View>
-
-        {/* ── INLINE VIDEO PLAYER ───────────────────────────────────────── */}
-        {showPreview && hasPromo && (
-          <View style={styles.videoContainer}>
-            <VideoView
-              player={videoPlayer}
-              style={styles.videoView}
-              nativeControls
-              contentFit="contain"
-              allowsFullscreen
-              allowsPictureInPicture
-            />
-          </View>
-        )}
 
         {/* ── WHITE BODY ────────────────────────────────────────────────── */}
         <View style={styles.body}>
@@ -817,16 +792,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontFamily: Fonts.semiBold,
-  },
-
-  /* Inline video */
-  videoContainer: {
-    width: SW,
-    height: VIDEO_H,
-    backgroundColor: '#000',
-  },
-  videoView: {
-    flex: 1,
   },
 
   /* ── Body ── */
