@@ -84,6 +84,13 @@ export default function StudentLayout() {
           tabBarIcon: ({ focused, color }) => <ProfileIcon focused={focused} color={color as string} />,
         }}
       />
+      {/* Sub-screens — hidden from the tab bar */}
+      <Tabs.Screen name="edit-profile" options={{ href: null }} />
+      <Tabs.Screen name="change-password" options={{ href: null }} />
+      <Tabs.Screen name="notification-settings" options={{ href: null }} />
+      <Tabs.Screen name="certificates" options={{ href: null }} />
+      <Tabs.Screen name="purchase-history" options={{ href: null }} />
+      <Tabs.Screen name="wishlist" options={{ href: null }} />
     </Tabs>
   );
 }
