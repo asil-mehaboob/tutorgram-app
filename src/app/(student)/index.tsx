@@ -18,6 +18,7 @@ import {
 } from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
+import { router } from 'expo-router';
 import { CourseCard } from '@/components/course/course-card';
 import { getCatalogCourses } from '@/lib/api/catalog';
 import { useAuth } from '@/lib/auth/context';
@@ -74,7 +75,11 @@ function CourseRow({ title, subtitle, courses, isLoading }: CourseRowProps) {
           contentContainerStyle={styles.carousel}
           ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
           renderItem={({ item }) => (
-            <CourseCard course={item} width={CARD_W} />
+            <CourseCard
+              course={item}
+              width={CARD_W}
+              onPress={() => router.push(`/(student)/course/${item.slug}` as never)}
+            />
           )}
         />
       )}

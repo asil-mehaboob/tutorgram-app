@@ -110,7 +110,10 @@ function WishlistCard({
     : '';
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+    <Pressable
+    onPress={() => router.push(`/(student)/course/${item.course.slug}` as never)}
+    style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+  >
       {item.course.thumbnail ? (
         <Image source={{ uri: item.course.thumbnail }} style={styles.thumb} contentFit="cover" />
       ) : (
@@ -138,7 +141,7 @@ function WishlistCard({
       <Pressable onPress={onRemove} style={styles.removeBtn} hitSlop={8}>
         <Trash size={18} color={theme.textSecondary} weight="regular" />
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 

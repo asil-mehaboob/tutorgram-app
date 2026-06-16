@@ -54,6 +54,20 @@ export function removeFromWishlist(courseId: string) {
   });
 }
 
+export function toggleWishlist(courseId: string) {
+  return apiRequest<{ courseId: string; inWishlist: boolean }>('/api/commerce/wishlist', {
+    method: 'POST',
+    body: { courseId },
+  });
+}
+
+export function enrollFreeCourse(courseId: string) {
+  return apiRequest<{ enrollmentId: string; courseId: string; enrolledAt: string }>(
+    '/api/commerce/enrollment/free',
+    { method: 'POST', body: { courseId } },
+  );
+}
+
 export function getTransactions(query?: { page?: number; limit?: number }) {
   const params = new URLSearchParams();
   if (query?.page) params.set('page', String(query.page));

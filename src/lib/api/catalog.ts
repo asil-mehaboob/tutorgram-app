@@ -1,5 +1,68 @@
 import { apiRequest } from './client';
 
+export type CourseLesson = {
+  id: string;
+  sectionId: string;
+  title: string;
+  type: 'VIDEO' | 'ARTICLE' | 'QUIZ' | string;
+  duration: number | null;
+  isFreePreview: boolean;
+  order: number;
+};
+
+export type CourseSection = {
+  id: string;
+  title: string;
+  description: string | null;
+  order: number;
+  lessons: CourseLesson[];
+};
+
+export type CourseDetail = {
+  id: string;
+  slug: string;
+  title: string;
+  shortDescription: string;
+  detailedDescription: string | null;
+  thumbnail: string | null;
+  promoVideoUrl: string | null;
+  level: string;
+  language: string;
+  isFree: boolean;
+  price: number | null;
+  discountPercent: number;
+  effectivePrice: number | null;
+  averageRating: number;
+  totalReviews: number;
+  totalStudents: number;
+  totalDuration: number;
+  totalSections: number;
+  totalLessons: number;
+  whatYouLearn: string[];
+  whoIsFor: string[] | null;
+  prerequisites: string[] | null;
+  learningOutcomes: string[] | null;
+  requirements: string[] | null;
+  category: { id: string; name: string; slug: string } | null;
+  subCategory: { id: string; name: string; slug: string } | null;
+  instructor: {
+    id: string;
+    fullName: string;
+    professionalTitle: string | null;
+    bio: string | null;
+    profilePicture: string | null;
+    isVerified: boolean;
+  };
+  brand: { name: string; logoUrl: string | null } | null;
+  sections: CourseSection[];
+};
+
+export type CourseDetailResponse = { course: CourseDetail };
+
+export function getCourseDetail(courseIdOrSlug: string): Promise<CourseDetailResponse> {
+  return apiRequest<CourseDetailResponse>(`/api/learning/courses/${courseIdOrSlug}`);
+}
+
 export type CatalogCourse = {
   id: string;
   slug: string;

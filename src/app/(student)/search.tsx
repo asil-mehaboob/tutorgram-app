@@ -12,6 +12,7 @@ import {
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { MagnifyingGlass, X, Star, ClockCounterClockwise, TrendUp } from 'phosphor-react-native';
 import * as SecureStore from 'expo-secure-store';
 import { useTheme } from '@/hooks/use-theme';
@@ -246,7 +247,10 @@ function SearchResultRow({ course, theme }: { course: CatalogCourse; theme: Retu
     : '';
 
   return (
-    <Pressable style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.85 : 1 }]}>
+    <Pressable
+    onPress={() => router.push(`/(student)/course/${course.slug}` as never)}
+    style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.85 : 1 }]}
+  >
       {course.thumbnail ? (
         <Image source={{ uri: course.thumbnail }} style={styles.resultThumb} contentFit="cover" />
       ) : (
