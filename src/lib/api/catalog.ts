@@ -91,6 +91,36 @@ export type CatalogCoursesResponse = {
   pagination: { page: number; limit: number; total: number; totalPages: number };
 };
 
+export type CourseReview = {
+  id: string;
+  rating: number;
+  title: string | null;
+  comment: string | null;
+  isVerified: boolean;
+  helpfulCount: number;
+  tutorReply: string | null;
+  tutorRepliedAt: string | null;
+  createdAt: string;
+  studentName: string | null;
+  studentProfilePicture: string | null;
+};
+
+export type CourseReviewsResponse = {
+  items: CourseReview[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+};
+
+export function getCourseReviews(
+  courseId: string,
+  query?: { page?: number; limit?: number },
+): Promise<CourseReviewsResponse> {
+  const params = new URLSearchParams();
+  if (query?.page) params.set('page', String(query.page));
+  if (query?.limit) params.set('limit', String(query.limit));
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest<CourseReviewsResponse>(`/api/learning/courses/${courseId}/reviews${qs}`);
+}
+
 export function getCatalogCourses(query?: {
   page?: number;
   limit?: number;

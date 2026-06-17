@@ -33,11 +33,11 @@ import {
 import { RichText } from '@/components/ui/rich-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
-import { getCourseDetail } from '@/lib/api/catalog';
+import { getCourseDetail, getCourseReviews } from '@/lib/api/catalog';
 import { enrollFreeCourse, toggleWishlist } from '@/lib/api/commerce';
 import { getMyLearning } from '@/lib/api/enrollment';
 import { ApiError } from '@/lib/api/client';
-import type { CourseSection, CourseLesson } from '@/lib/api/catalog';
+import type { CourseSection, CourseLesson, CourseReview } from '@/lib/api/catalog';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -72,6 +72,87 @@ function getLessonIcon(type: string, color: string) {
   return <PlayCircle size={14} color={color} weight="regular" />;
 }
 
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+function formatReviewDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+}
+
+const REVIEW_AVATAR_COLORS = ['#7C3AED', '#2563EB', '#059669', '#EA580C', '#DB2777', '#4338CA'];
+function reviewAvatarColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return REVIEW_AVATAR_COLORS[Math.abs(h) % REVIEW_AVATAR_COLORS.length];
+}
+
+function ReviewCard({
+  review,
+  showBorder,
+  theme,
+}: {
+  review: CourseReview;
+  showBorder: boolean;
+  theme: ReturnType<typeof import('@/hooks/use-theme').useTheme>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const name = review.studentName ?? 'Student';
+  const avatarColor = reviewAvatarColor(name);
+  const TRUNCATE = 140;
+  const isTruncatable = (review.comment?.length ?? 0) > TRUNCATE;
+  const displayedComment =
+    !isTruncatable || expanded
+      ? review.comment
+      : review.comment!.slice(0, TRUNCATE).trimEnd() + '…';
+
+  return (
+    <View style={[styles.reviewCard, showBorder && styles.reviewCardBorder]}>
+      <View style={styles.reviewHeader}>
+        {review.studentProfilePicture ? (
+          <Image
+            source={{ uri: review.studentProfilePicture }}
+            style={styles.reviewAvatar}
+            contentFit="cover"
+          />
+        ) : (
+          <View style={[styles.reviewAvatar, styles.reviewAvatarFallback, { backgroundColor: avatarColor }]}>
+            <Text style={styles.reviewAvatarInitial}>{name.charAt(0).toUpperCase()}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.reviewName} numberOfLines={1}>{name}</Text>
+          <View style={styles.reviewMeta}>
+            <View style={styles.reviewStars}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  size={11}
+                  color="#FFB800"
+                  weight={i < review.rating ? 'fill' : 'regular'}
+                />
+              ))}
+            </View>
+            <Text style={styles.reviewDate}>{formatReviewDate(review.createdAt)}</Text>
+          </View>
+        </View>
+      </View>
+      {!!review.title && (
+        <Text style={styles.reviewTitle}>{review.title}</Text>
+      )}
+      {!!review.comment && (
+        <Pressable onPress={() => isTruncatable && setExpanded((p) => !p)}>
+          <Text style={styles.reviewComment}>{displayedComment}</Text>
+          {isTruncatable && (
+            <Text style={[styles.reviewReadToggle, { color: theme.primary }]}>
+              {expanded ? 'Show less' : 'Read more'}
+            </Text>
+          )}
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
 // ─── screen ───────────────────────────────────────────────────────────────────
 
 export default function CourseDetailScreen() {
@@ -97,6 +178,14 @@ export default function CourseDetailScreen() {
   });
 
   const course = data?.course;
+
+  const { data: reviewsData } = useQuery({
+    queryKey: ['course-reviews', course?.id],
+    queryFn: () => getCourseReviews(course!.id, { limit: 3 }),
+    enabled: !!course?.id,
+  });
+
+  const reviews: CourseReview[] = reviewsData?.items ?? [];
 
   const isEnrolled =
     enrolledLocally ||
@@ -573,6 +662,72 @@ export default function CourseDetailScreen() {
               <RichText html={course.instructor.bio} />
             )}
           </View>
+
+          {/* Student reviews */}
+          {course.totalReviews > 0 && (
+            <>
+              <View style={styles.sep} />
+              <View style={styles.section}>
+                <View style={styles.reviewsSectionHeader}>
+                  <Text style={styles.sectionTitle}>Student reviews</Text>
+                  <Pressable
+                    hitSlop={8}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/course/reviews',
+                        params: {
+                          courseId: course.id,
+                          title: course.title,
+                          averageRating: String(course.averageRating),
+                          totalReviews: String(course.totalReviews),
+                        },
+                      } as never)
+                    }
+                    style={styles.seeAllReviews}
+                  >
+                    <Text style={[styles.seeAllReviewsText, { color: theme.primary }]}>
+                      See all {course.totalReviews.toLocaleString()}
+                    </Text>
+                    <ArrowRight size={13} color={theme.primary} weight="bold" />
+                  </Pressable>
+                </View>
+
+                {/* Rating summary */}
+                <View style={styles.ratingSummary}>
+                  <View style={styles.ratingBig}>
+                    <Text style={styles.ratingBigNum}>{course.averageRating.toFixed(1)}</Text>
+                    <View style={styles.stars}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          size={14}
+                          color="#FFB800"
+                          weight={i < full ? 'fill' : half && i === full ? 'duotone' : 'regular'}
+                        />
+                      ))}
+                    </View>
+                    <Text style={styles.ratingBigLabel}>
+                      {course.totalReviews.toLocaleString()} {course.totalReviews === 1 ? 'rating' : 'ratings'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Review list */}
+                {reviews.length > 0 && (
+                  <View style={styles.reviewList}>
+                    {reviews.map((review, i) => (
+                      <ReviewCard
+                        key={review.id}
+                        review={review}
+                        showBorder={i < reviews.length - 1}
+                        theme={theme}
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -910,6 +1065,116 @@ const styles = StyleSheet.create({
   },
   instructorMetaText: { fontSize: 12, fontFamily: Fonts.regular, color: '#666' },
   instructorMetaDot: { color: '#CCC', fontSize: 13 },
+
+  /* ── Reviews ── */
+  reviewsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  seeAllReviews: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  seeAllReviewsText: {
+    fontSize: 13,
+    fontFamily: Fonts.semiBold,
+  },
+  ratingSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  ratingBig: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingBigNum: {
+    fontSize: 40,
+    fontFamily: Fonts.extraBold,
+    color: '#1C1D1F',
+    lineHeight: 44,
+    letterSpacing: -1,
+  },
+  ratingBigLabel: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: '#666',
+  },
+  reviewList: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  reviewCard: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 8,
+    backgroundColor: '#fff',
+  },
+  reviewCardBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E0E0E0',
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  reviewAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    flexShrink: 0,
+  },
+  reviewAvatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewAvatarInitial: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: Fonts.bold,
+  },
+  reviewName: {
+    fontSize: 14,
+    fontFamily: Fonts.semiBold,
+    color: '#1C1D1F',
+  },
+  reviewMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  reviewStars: {
+    flexDirection: 'row',
+    gap: 1,
+  },
+  reviewDate: {
+    fontSize: 11,
+    fontFamily: Fonts.regular,
+    color: '#999',
+  },
+  reviewTitle: {
+    fontSize: 13,
+    fontFamily: Fonts.bold,
+    color: '#1C1D1F',
+  },
+  reviewComment: {
+    fontSize: 13,
+    fontFamily: Fonts.regular,
+    color: '#444',
+    lineHeight: 20,
+  },
+  reviewReadToggle: {
+    fontSize: 12,
+    fontFamily: Fonts.semiBold,
+    marginTop: 4,
+  },
+
   /* ── Bottom bar ── */
   bottomBar: {
     position: 'absolute',
