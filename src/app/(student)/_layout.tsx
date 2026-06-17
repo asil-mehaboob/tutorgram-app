@@ -93,6 +93,7 @@ export default function StudentLayout() {
       <Tabs.Screen name="certificates" options={{ href: null }} />
       <Tabs.Screen name="purchase-history" options={{ href: null }} />
       <Tabs.Screen name="wishlist" options={{ href: null }} />
+      <Tabs.Screen name="catalog" options={{ href: null }} />
     </Tabs>
   );
 }
