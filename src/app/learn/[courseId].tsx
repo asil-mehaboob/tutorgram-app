@@ -12,7 +12,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { useVideoPlayer, VideoView, type ContentType } from 'expo-video';
 import { useEvent, useEventListener } from 'expo';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -79,7 +79,7 @@ function LessonTypeIcon({ type, color, size = 14 }: { type: string; color: strin
 
 type VideoSource = {
   uri: string;
-  contentType?: string;
+  contentType?: ContentType;
 };
 
 type EmbeddedPlayerProps = {
@@ -560,11 +560,11 @@ export default function CourseLearnScreen() {
       }
     }
 
-    const result = { 
-      uri, 
-      ...(videoStream.contentType === 'hls' ? { contentType: 'hls' } : {}),
-      ...(videoStream.contentType === 'hls' && sessionToken 
-        ? { headers: { Cookie: `authjs.session-token=${sessionToken}` } } 
+    const result = {
+      uri,
+      ...(videoStream.contentType === 'hls' ? { contentType: 'hls' as ContentType } : {}),
+      ...(videoStream.contentType === 'hls' && sessionToken
+        ? { headers: { Cookie: `authjs.session-token=${sessionToken}` } }
         : {})
     };
     console.log('[Stream] videoSource:', result.uri);
@@ -981,7 +981,7 @@ const styles = StyleSheet.create({
   emptyCircle: { width: 16, height: 16, borderRadius: 8, borderWidth: 1.5 },
 
   modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center', alignItems: 'center', padding: 24,
   },

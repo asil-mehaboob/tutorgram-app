@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import RazorpayCheckout from 'react-native-razorpay';
+import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -34,7 +37,14 @@ import { RichText } from '@/components/ui/rich-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { getCourseDetail, getCourseReviews } from '@/lib/api/catalog';
-import { enrollFreeCourse, toggleWishlist, getWishlist } from '@/lib/api/commerce';
+import {
+  enrollFreeCourse,
+  toggleWishlist,
+  getWishlist,
+  createRazorpayOrder,
+  verifyPayment,
+  confirmPayment,
+} from '@/lib/api/commerce';
 import { getMyLearning } from '@/lib/api/enrollment';
 import { ApiError } from '@/lib/api/client';
 import type { CourseSection, CourseLesson, CourseReview } from '@/lib/api/catalog';
@@ -165,6 +175,7 @@ export default function CourseDetailScreen() {
   const [descExpanded, setDescExpanded] = useState(false);
   const [enrolledLocally, setEnrolledLocally] = useState(false);
   const [wishlistOverride, setWishlistOverride] = useState<boolean | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['course-detail', courseIdOrSlug],
@@ -222,6 +233,53 @@ export default function CourseDetailScreen() {
       setWishlistOverride(null);
     },
   });
+
+  async function handleBuyCourse() {
+    if (!course) return;
+    setPurchasing(true);
+    try {
+      const order = await createRazorpayOrder([course.id]);
+
+      const paymentData = await RazorpayCheckout.open({
+        description: course.title,
+        currency: order.currency,
+        key: order.keyId,
+        amount: order.amountInSmallestUnit,
+        name: 'Tutorgram',
+        order_id: order.orderId,
+        theme: { color: theme.primary },
+      });
+
+      const verificationId = Crypto.randomUUID();
+      const { verificationToken } = await verifyPayment({
+        gateway: 'RAZORPAY',
+        gatewayOrderId: paymentData.razorpay_order_id,
+        gatewayPaymentId: paymentData.razorpay_payment_id,
+        verificationId,
+        signature: paymentData.razorpay_signature,
+      });
+
+      await confirmPayment({
+        gateway: 'RAZORPAY',
+        gatewayOrderId: paymentData.razorpay_order_id,
+        gatewayPaymentId: paymentData.razorpay_payment_id,
+        courseIds: [course.id],
+        currency: order.currency,
+        verificationToken,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['my-learning'] });
+      router.replace(`/learn/${course.id}`);
+    } catch (err: unknown) {
+      const e = err as { code?: string; description?: string; message?: string; status?: number };
+      const anyErr = err as any;
+      if (e?.code !== 'PAYMENT_CANCELLED') {
+        Alert.alert('Payment failed', anyErr?.message ?? e?.description ?? 'Please try again.');
+      }
+    } finally {
+      setPurchasing(false);
+    }
+  }
 
   function toggleSection(id: string) {
     setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -792,15 +850,17 @@ export default function CourseDetailScreen() {
                 router.push(`/learn/${course.id}`);
               } else if (course.isFree) {
                 enroll();
+              } else {
+                handleBuyCourse();
               }
             }}
-            disabled={enrolling}
+            disabled={enrolling || purchasing}
             style={({ pressed }) => [
               styles.ctaBtn,
-              { backgroundColor: pressed || enrolling ? theme.primaryDark : theme.primary },
+              { backgroundColor: pressed || enrolling || purchasing ? theme.primaryDark : theme.primary },
             ]}
           >
-            {enrolling ? (
+            {enrolling || purchasing ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <Text style={styles.ctaBtnText}>
