@@ -70,11 +70,15 @@ function CourseRow({ course, theme }: { course: CatalogCourse; theme: ReturnType
 export default function CatalogScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { sortBy, title } = useLocalSearchParams<{ sortBy: string; title: string }>();
+  const { sortBy, title, instructorId } = useLocalSearchParams<{
+    sortBy: string;
+    title: string;
+    instructorId: string;
+  }>();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['catalog-courses-list', sortBy],
-    queryFn: () => getCatalogCourses({ limit: 30, sortBy }),
+    queryKey: ['catalog-courses-list', sortBy, instructorId],
+    queryFn: () => getCatalogCourses({ limit: 50, sortBy, instructorId }),
   });
 
   const courses = data?.items ?? [];

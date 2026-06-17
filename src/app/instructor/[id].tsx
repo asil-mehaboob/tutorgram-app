@@ -407,11 +407,27 @@ export default function InstructorScreen() {
           {hasCourses && (
             <>
               <View style={[styles.section, { paddingBottom: 4 }]}>
-                <SectionHeading
-                  icon={<GraduationCap size={18} color={theme.textSecondary} weight="regular" />}
-                  title="Courses"
-                  theme={theme}
-                />
+                <View style={styles.sectionHeadingWithAction}>
+                  <SectionHeading
+                    icon={<GraduationCap size={18} color={theme.textSecondary} weight="regular" />}
+                    title="Courses"
+                    theme={theme}
+                  />
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(student)/catalog',
+                        params: {
+                          instructorId: instructor.id,
+                          title: `${instructor.fullName}'s Courses`,
+                        },
+                      } as never)
+                    }
+                    hitSlop={8}
+                  >
+                    <Text style={[styles.seeAllText, { color: theme.primary }]}>See all</Text>
+                  </Pressable>
+                </View>
               </View>
               <FlatList
                 data={courses}
@@ -657,6 +673,12 @@ const styles = StyleSheet.create({
 
   sectionHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionHeadingText: { fontSize: 17, fontFamily: Fonts.extraBold, letterSpacing: -0.2 },
+  sectionHeadingWithAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  seeAllText: { fontSize: 13, fontFamily: Fonts.semiBold },
 
   carousel: { paddingHorizontal: 20, paddingVertical: 4 },
 

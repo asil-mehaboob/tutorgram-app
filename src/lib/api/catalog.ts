@@ -224,12 +224,14 @@ export function getCatalogCourses(query?: {
   limit?: number;
   sortBy?: string;
   q?: string;
+  instructorId?: string;
 }): Promise<CatalogCoursesResponse> {
   const params = new URLSearchParams();
   if (query?.page) params.set('page', String(query.page));
   if (query?.limit) params.set('limit', String(query.limit));
   if (query?.sortBy) params.set('sortBy', query.sortBy);
   if (query?.q) params.set('q', query.q);
+  if (query?.instructorId) params.set('instructorId', query.instructorId);
   const qs = params.toString() ? `?${params.toString()}` : '';
   return apiRequest<CatalogCoursesResponse>(`/api/catalog/courses${qs}`);
 }
