@@ -61,6 +61,7 @@ export function toggleWishlist(courseId: string) {
   });
 }
 
+
 export function enrollFreeCourse(courseId: string) {
   return apiRequest<{ enrollmentId: string; courseId: string; enrolledAt: string }>(
     '/api/commerce/enrollment/free',

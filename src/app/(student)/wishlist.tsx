@@ -111,36 +111,43 @@ function WishlistCard({
 
   return (
     <Pressable
-    onPress={() => router.push(`/course/${item.course.slug}` as never)}
-    style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
-  >
-      {item.course.thumbnail ? (
-        <Image source={{ uri: item.course.thumbnail }} style={styles.thumb} contentFit="cover" />
-      ) : (
-        <View style={[styles.thumb, { backgroundColor: gradColor(item.course.id), justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={styles.thumbInitial}>{item.course.title.charAt(0)}</Text>
-        </View>
-      )}
+      onPress={() => router.push(`/course/${item.course.slug}` as never)}
+      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+    >
+      {/* 16:9 thumbnail */}
+      <View style={styles.thumbWrap}>
+        {item.course.thumbnail ? (
+          <Image source={{ uri: item.course.thumbnail }} style={styles.thumb} contentFit="cover" />
+        ) : (
+          <View style={[styles.thumb, { backgroundColor: gradColor(item.course.id), justifyContent: 'center', alignItems: 'center' }]}>
+            <Text style={styles.thumbInitial}>{item.course.title.charAt(0)}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Info row */}
       <View style={styles.cardBody}>
-        <Text style={[styles.courseTitle, { color: theme.text }]} numberOfLines={2}>
-          {item.course.title}
-        </Text>
-        <Text style={[styles.tutorName, { color: theme.textSecondary }]} numberOfLines={1}>
-          {item.course.tutor.fullName}
-        </Text>
-        <View style={styles.ratingRow}>
-          <Star size={11} color={theme.star} weight="fill" />
-          <Text style={[styles.rating, { color: theme.star }]}>
-            {item.course.averageRating.toFixed(1)}
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={[styles.courseTitle, { color: theme.text }]} numberOfLines={2}>
+            {item.course.title}
+          </Text>
+          <Text style={[styles.tutorName, { color: theme.textSecondary }]} numberOfLines={1}>
+            {item.course.tutor.fullName}
+          </Text>
+          <View style={styles.ratingRow}>
+            <Star size={11} color={theme.star} weight="fill" />
+            <Text style={[styles.rating, { color: theme.star }]}>
+              {item.course.averageRating.toFixed(1)}
+            </Text>
+          </View>
+          <Text style={[styles.price, { color: item.course.isFree ? theme.success : theme.text }]}>
+            {priceLabel}
           </Text>
         </View>
-        <Text style={[styles.price, { color: item.course.isFree ? theme.success : theme.text }]}>
-          {priceLabel}
-        </Text>
+        <Pressable onPress={onRemove} hitSlop={8} style={styles.removeBtn}>
+          <Trash size={18} color={theme.textSecondary} weight="regular" />
+        </Pressable>
       </View>
-      <Pressable onPress={onRemove} style={styles.removeBtn} hitSlop={8}>
-        <Trash size={18} color={theme.textSecondary} weight="regular" />
-      </Pressable>
     </Pressable>
   );
 }
@@ -166,16 +173,16 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
     overflow: 'hidden',
   },
-  thumb: { width: 96, flexShrink: 0 },
+  thumbWrap: { width: '100%', aspectRatio: 16 / 9 },
+  thumb: { width: '100%', height: '100%' },
   thumbInitial: { color: 'rgba(255,255,255,0.7)', fontSize: 26, fontFamily: Fonts.extraBold },
-  cardBody: { flex: 1, padding: 12, gap: 4 },
+  cardBody: { flexDirection: 'row', alignItems: 'flex-start', padding: 12, gap: 8 },
   courseTitle: { fontSize: 13, fontFamily: Fonts.bold, lineHeight: 18 },
   tutorName: { fontSize: 11, fontFamily: Fonts.regular },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   rating: { fontSize: 12, fontFamily: Fonts.bold },
   price: { fontSize: 14, fontFamily: Fonts.extraBold, letterSpacing: -0.2 },
-  removeBtn: { padding: 12, justifyContent: 'flex-start' },
+  removeBtn: { padding: 4, marginTop: 2 },
 });

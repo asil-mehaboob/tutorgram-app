@@ -34,7 +34,7 @@ import { RichText } from '@/components/ui/rich-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { getCourseDetail, getCourseReviews } from '@/lib/api/catalog';
-import { enrollFreeCourse, toggleWishlist } from '@/lib/api/commerce';
+import { enrollFreeCourse, toggleWishlist, getWishlist } from '@/lib/api/commerce';
 import { getMyLearning } from '@/lib/api/enrollment';
 import { ApiError } from '@/lib/api/client';
 import type { CourseSection, CourseLesson, CourseReview } from '@/lib/api/catalog';
@@ -164,6 +164,7 @@ export default function CourseDetailScreen() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [descExpanded, setDescExpanded] = useState(false);
   const [enrolledLocally, setEnrolledLocally] = useState(false);
+  const [wishlistOverride, setWishlistOverride] = useState<boolean | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['course-detail', courseIdOrSlug],
@@ -185,6 +186,11 @@ export default function CourseDetailScreen() {
     enabled: !!course?.id,
   });
 
+  const { data: wishlistData } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: () => getWishlist({ limit: 200 }),
+  });
+
   const reviews: CourseReview[] = reviewsData?.items ?? [];
 
   const isEnrolled =
@@ -202,9 +208,19 @@ export default function CourseDetailScreen() {
     },
   });
 
-  const { mutate: wishlist } = useMutation({
+  const { mutate: wishlist, isPending: wishlisting } = useMutation({
     mutationFn: () => toggleWishlist(course!.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
+    onMutate: () => {
+      const current = wishlistOverride ?? !!(wishlistData?.items ?? []).find((i) => i.course.id === course?.id);
+      setWishlistOverride(!current);
+    },
+    onSuccess: (res) => {
+      setWishlistOverride(res.inWishlist);
+      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+    },
+    onError: () => {
+      setWishlistOverride(null);
+    },
   });
 
   function toggleSection(id: string) {
@@ -268,6 +284,9 @@ export default function CourseDetailScreen() {
       ? `(${(course.totalReviews / 1000).toFixed(1)}k ratings)`
       : `(${course.totalReviews} ratings)`;
 
+  const inWishlist =
+    wishlistOverride ?? !!(wishlistData?.items ?? []).find((i) => i.course.id === course?.id);
+
   const SHORT_DESC_LIMIT = 120;
   const descIsTruncatable = course.shortDescription.length > SHORT_DESC_LIMIT;
   const displayedDesc = descExpanded || !descIsTruncatable
@@ -292,8 +311,16 @@ export default function CourseDetailScreen() {
             <Pressable onPress={() => router.back()} hitSlop={10} style={styles.heroNavBtn}>
               <ArrowLeft size={22} color="#fff" weight="bold" />
             </Pressable>
-            <Pressable onPress={() => wishlist()} hitSlop={10} style={styles.heroNavBtn}>
-              <BookmarkSimple size={22} color="#fff" weight="regular" />
+            <Pressable
+              onPress={() => !wishlisting && wishlist()}
+              hitSlop={10}
+              style={styles.heroNavBtn}
+            >
+              <BookmarkSimple
+                size={22}
+                color={inWishlist ? '#FFB800' : '#fff'}
+                weight={inWishlist ? 'fill' : 'regular'}
+              />
             </Pressable>
           </View>
 
