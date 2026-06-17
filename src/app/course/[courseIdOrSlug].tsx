@@ -363,7 +363,11 @@ export default function CourseDetailScreen() {
           </View>
 
           {/* Instructor */}
-          <View style={styles.heroInstructorRow}>
+          <Pressable
+            style={styles.heroInstructorRow}
+            onPress={() => router.push(`/instructor/${course.instructor.id}` as never)}
+            hitSlop={6}
+          >
             <UserCircle size={14} color="rgba(255,255,255,0.55)" weight="regular" />
             <Text style={styles.heroInstructor}>
               Created by{' '}
@@ -372,7 +376,7 @@ export default function CourseDetailScreen() {
                 <>{'  '}<SealCheck size={12} color="#6C8EFF" weight="fill" /></>
               )}
             </Text>
-          </View>
+          </Pressable>
 
           {/* Chips */}
           <View style={styles.heroChips}>
@@ -613,7 +617,10 @@ export default function CourseDetailScreen() {
           {/* Instructor */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Instructor</Text>
-            <View style={styles.instructorCard}>
+            <Pressable
+              style={({ pressed }) => [styles.instructorCard, { opacity: pressed ? 0.85 : 1 }]}
+              onPress={() => router.push(`/instructor/${course.instructor.id}` as never)}
+            >
               {course.instructor.profilePicture ? (
                 <Image
                   source={{ uri: course.instructor.profilePicture }}
@@ -657,7 +664,7 @@ export default function CourseDetailScreen() {
                   </Text>
                 </View>
               </View>
-            </View>
+            </Pressable>
             {!!course.instructor.bio && (
               <RichText html={course.instructor.bio} />
             )}
@@ -1039,7 +1046,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  instructorCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  instructorCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, backgroundColor: '#F7F9FA', borderRadius: 12, padding: 14 },
   instructorAvatar: { width: 60, height: 60, borderRadius: 30 },
   instructorAvatarFallback: { justifyContent: 'center', alignItems: 'center' },
   instructorInitial: { fontSize: 24, fontFamily: Fonts.extraBold },
