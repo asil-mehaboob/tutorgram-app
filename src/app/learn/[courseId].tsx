@@ -46,8 +46,6 @@ import { BASE_URL } from '@/lib/api/client';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const VIDEO_HEIGHT = Math.round(SCREEN_WIDTH * (9 / 16));
 const PRIMARY = '#7C8EF8';
 const HIDE_DELAY = 3000;
 const THUMB = 14;
@@ -340,7 +338,7 @@ function EmbeddedPlayer({ source, quality, onQualityChange }: EmbeddedPlayerProp
 }
 
 const pStyles = StyleSheet.create({
-  root: { width: '100%', height: VIDEO_HEIGHT, backgroundColor: '#000' },
+  root: { width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000' },
   center: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   centerBtn: {
     width: 72, height: 72, borderRadius: 36,
@@ -609,7 +607,7 @@ export default function CourseLearnScreen() {
       </View>
 
       {/* ── Video area ────────────────────────────────────────────────────── */}
-      <View style={{ height: VIDEO_HEIGHT, backgroundColor: '#000' }}>
+      <View style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000' }}>
         {showVideo && videoSource ? (
           // key forces full remount (new player) when lesson changes
           <EmbeddedPlayer 
