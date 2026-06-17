@@ -81,7 +81,13 @@ type VideoSource = {
   contentType?: string;
 };
 
-function EmbeddedPlayer({ source }: { source: VideoSource }) {
+type EmbeddedPlayerProps = {
+  source: VideoSource;
+  quality: string;
+  onQualityChange: (q: string) => void;
+};
+
+function EmbeddedPlayer({ source, quality, onQualityChange }: EmbeddedPlayerProps) {
   useEffect(() => {
     console.log('[Player] mounted, uri:', source.uri, 'contentType:', source.contentType);
     return () => console.log('[Player] unmounted');
@@ -111,9 +117,26 @@ function EmbeddedPlayer({ source }: { source: VideoSource }) {
     currentOffsetFromLive: null,
   });
   const [duration, setDuration] = useState(0);
+
+  // Preserve time when switching quality
+  const targetTimeRef = useRef(0);
+  const prevUriRef = useRef(source.uri);
+
+  if (prevUriRef.current !== source.uri) {
+    // URL changed (likely quality switch), store current time before it resets
+    if (currentTime > 0) targetTimeRef.current = currentTime;
+    prevUriRef.current = source.uri;
+  }
+
   useEventListener(player, 'sourceLoad', ({ duration: d }) => {
     console.log('[Player] sourceLoad, duration:', d);
     if (d > 0) setDuration(d);
+    
+    // Resume playback position after quality switch
+    if (targetTimeRef.current > 0) {
+      player.currentTime = targetTimeRef.current;
+      targetTimeRef.current = 0;
+    }
   });
 
   const isBuffering = status === 'loading' || status === 'idle';
@@ -174,14 +197,23 @@ function EmbeddedPlayer({ source }: { source: VideoSource }) {
     resetTimer();
   }
 
-  // Speed
+  // Speed & Quality
   const [speed, setSpeed] = useState(1);
   const [speedOpen, setSpeedOpen] = useState(false);
+  const [qualityOpen, setQualityOpen] = useState(false);
+
+  const QUALITIES = ['Auto', '1080p', '720p', '360p'];
 
   function changeSpeed(s: number) {
     player.playbackRate = s;
     setSpeed(s);
     setSpeedOpen(false);
+    resetTimer();
+  }
+
+  function handleQualitySelect(q: string) {
+    onQualityChange(q);
+    setQualityOpen(false);
     resetTimer();
   }
 
@@ -246,13 +278,26 @@ function EmbeddedPlayer({ source }: { source: VideoSource }) {
               <Text style={pStyles.time}>{fmt(currentTime ?? 0)} / {fmt(duration)}</Text>
             </View>
 
-            <Pressable
-              onPress={() => { setSpeedOpen(v => !v); resetTimer(); }}
-              style={({ pressed }) => [pStyles.speedPill, pressed && { opacity: 0.7 }]}
-              hitSlop={8}
-            >
-              <Text style={pStyles.speedLabel}>{speed === 1 ? '1×' : `${speed}×`}</Text>
-            </Pressable>
+            {/* Right controls */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {source.contentType === 'hls' && (
+                <Pressable
+                  onPress={() => { setQualityOpen(v => !v); setSpeedOpen(false); resetTimer(); }}
+                  style={({ pressed }) => [pStyles.speedPill, pressed && { opacity: 0.7 }]}
+                  hitSlop={8}
+                >
+                  <Text style={pStyles.speedLabel}>{quality}</Text>
+                </Pressable>
+              )}
+
+              <Pressable
+                onPress={() => { setSpeedOpen(v => !v); setQualityOpen(false); resetTimer(); }}
+                style={({ pressed }) => [pStyles.speedPill, pressed && { opacity: 0.7 }]}
+                hitSlop={8}
+              >
+                <Text style={pStyles.speedLabel}>{speed === 1 ? '1×' : `${speed}×`}</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Animated.View>
@@ -268,6 +313,23 @@ function EmbeddedPlayer({ source }: { source: VideoSource }) {
             >
               <Text style={[pStyles.speedText, s === speed && pStyles.speedTextActive]}>
                 {s === 1 ? 'Normal' : `${s}×`}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {/* Quality menu */}
+      {qualityOpen && (
+        <View style={pStyles.qualityMenu}>
+          {QUALITIES.map(q => (
+            <Pressable
+              key={q}
+              onPress={() => handleQualitySelect(q)}
+              style={({ pressed }) => [pStyles.speedItem, q === quality && pStyles.speedItemActive, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={[pStyles.speedText, q === quality && pStyles.speedTextActive]}>
+                {q}
               </Text>
             </Pressable>
           ))}
@@ -312,6 +374,12 @@ const pStyles = StyleSheet.create({
     backgroundColor: 'rgba(12,12,12,0.97)', borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden', minWidth: 110,
+  },
+  qualityMenu: {
+    position: 'absolute', right: 70, bottom: 58,
+    backgroundColor: 'rgba(12,12,12,0.97)', borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden', minWidth: 100,
   },
   speedItem: { paddingHorizontal: 18, paddingVertical: 11 },
   speedItemActive: { backgroundColor: PRIMARY + '28' },
@@ -358,6 +426,7 @@ export default function CourseLearnScreen() {
   const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [completionCert, setCompletionCert] = useState<{ code: string; url: string } | null>(null);
+  const [quality, setQuality] = useState<string>('Auto');
 
   // Sync server progress → local state
   useEffect(() => {
@@ -434,6 +503,9 @@ export default function CourseLearnScreen() {
     let uri = videoStream.streamUrl;
     if (uri.startsWith('/')) {
       uri = `${BASE_URL}${uri}`;
+      if (quality !== 'Auto' && videoStream.contentType === 'hls') {
+        uri = `${uri}/${quality}`;
+      }
     }
 
     const result = { 
@@ -445,7 +517,7 @@ export default function CourseLearnScreen() {
     };
     console.log('[Stream] videoSource:', result.uri);
     return result;
-  }, [activeLesson?.id, activeLesson?.type, videoStream, sessionToken]);
+  }, [activeLesson?.id, activeLesson?.type, videoStream, sessionToken, quality]);
 
   // ── Progress mutation ───────────────────────────────────────────────────────
   const { mutate: syncProgress } = useMutation({
@@ -540,7 +612,12 @@ export default function CourseLearnScreen() {
       <View style={{ height: VIDEO_HEIGHT, backgroundColor: '#000' }}>
         {showVideo && videoSource ? (
           // key forces full remount (new player) when lesson changes
-          <EmbeddedPlayer key={activeLesson!.id} source={videoSource} />
+          <EmbeddedPlayer 
+            key={activeLesson!.id} 
+            source={videoSource} 
+            quality={quality}
+            onQualityChange={setQuality}
+          />
         ) : showVideo && (lessonLoading || (!videoStream && lessonDetail?.videoStatus === 'READY')) ? (
           // Loading lesson detail
           <View style={[StyleSheet.absoluteFill, styles.videoCenter]}>
