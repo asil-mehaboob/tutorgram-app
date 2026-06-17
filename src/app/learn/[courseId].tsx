@@ -41,6 +41,8 @@ import {
 } from '@/lib/api/enrollment';
 import type { LessonStream } from '@/lib/api/enrollment';
 import type { CourseLesson } from '@/lib/api/catalog';
+import { getSession } from '@/lib/auth/storage';
+import { BASE_URL } from '@/lib/api/client';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -136,7 +138,13 @@ function EmbeddedPlayer({ source }: { source: VideoSource }) {
   const resetTimer = useCallback(() => {
     showControls();
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => { if (player.playing) hideControls(); }, HIDE_DELAY);
+    hideTimer.current = setTimeout(() => { 
+      try {
+        if (player.playing) hideControls(); 
+      } catch (e) {
+        // Ignore errors if player is released
+      }
+    }, HIDE_DELAY);
   }, [showControls, hideControls, player]);
 
   useEffect(() => { resetTimer(); }, []);
@@ -320,6 +328,11 @@ export default function CourseLearnScreen() {
   const queryClient = useQueryClient();
 
   const [videoStream, setVideoStream] = useState<LessonStream | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSession().then(setSessionToken);
+  }, []);
 
   // ── Data ────────────────────────────────────────────────────────────────────
   const { data: courseData, isLoading: courseLoading } = useQuery({
@@ -416,12 +429,23 @@ export default function CourseLearnScreen() {
   }, [activeLesson?.id, lessonDetail?.videoStatus]);
 
   const videoSource = useMemo<VideoSource | null>(() => {
-    const result = (!activeLesson || activeLesson.type !== 'VIDEO' || !videoStream)
-      ? null
-      : { uri: videoStream.streamUrl, ...(videoStream.contentType === 'hls' ? { contentType: 'hls' } : {}) };
-    console.log('[Stream] videoSource:', result ? result.uri : 'null');
+    if (!activeLesson || activeLesson.type !== 'VIDEO' || !videoStream) return null;
+
+    let uri = videoStream.streamUrl;
+    if (uri.startsWith('/')) {
+      uri = `${BASE_URL}${uri}`;
+    }
+
+    const result = { 
+      uri, 
+      ...(videoStream.contentType === 'hls' ? { contentType: 'hls' } : {}),
+      ...(videoStream.contentType === 'hls' && sessionToken 
+        ? { headers: { Cookie: `authjs.session-token=${sessionToken}` } } 
+        : {})
+    };
+    console.log('[Stream] videoSource:', result.uri);
     return result;
-  }, [activeLesson?.id, activeLesson?.type, videoStream]);
+  }, [activeLesson?.id, activeLesson?.type, videoStream, sessionToken]);
 
   // ── Progress mutation ───────────────────────────────────────────────────────
   const { mutate: syncProgress } = useMutation({
