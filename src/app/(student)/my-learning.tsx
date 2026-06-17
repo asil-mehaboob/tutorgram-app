@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Books, ArrowClockwise } from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
@@ -138,8 +139,12 @@ export default function MyLearningScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
         >
-{displayList.map((course) => (
-            <EnrolledCard key={course.courseId} course={course} />
+          {displayList.map((course) => (
+            <EnrolledCard
+              key={course.courseId}
+              course={course}
+              onPress={() => router.push(`/learn/${course.courseId}`)}
+            />
           ))}
         </ScrollView>
       )}

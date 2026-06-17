@@ -600,7 +600,7 @@ export default function CourseDetailScreen() {
           <Pressable
             onPress={() => {
               if (isEnrolled) {
-                router.push('/(student)/my-learning');
+                router.push(`/learn/${course.id}`);
               } else if (course.isFree) {
                 enroll();
               }

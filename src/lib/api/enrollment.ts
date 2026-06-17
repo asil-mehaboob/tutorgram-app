@@ -1,5 +1,66 @@
 import { apiRequest } from './client';
 
+// ─── Lesson Detail (video content + status) ───────────────────────────────────
+
+export type LessonDetail = {
+  id: string;
+  content: string | null;
+  videoStatus: string | null;
+};
+
+export function getLessonDetail(lessonId: string): Promise<LessonDetail> {
+  return apiRequest<LessonDetail>(`/api/learning/courses/lessons/${lessonId}`);
+}
+
+export type LessonStream = {
+  streamUrl: string;
+  contentType: 'hls' | 'mp4';
+};
+
+export function getLessonStream(lessonId: string): Promise<LessonStream> {
+  return apiRequest<LessonStream>(`/api/video/${lessonId}/token`);
+}
+
+// ─── Course Progress ──────────────────────────────────────────────────────────
+
+export type LessonProgressRecord = {
+  lessonId: string;
+  isCompleted: boolean;
+  watchedSeconds: number;
+};
+
+export type CourseProgressData = {
+  progress: {
+    completedLessons: number;
+    totalLessons: number;
+    progressPercent: number;
+    lastAccessedAt: string;
+    completedAt: string | null;
+  };
+  lessons: LessonProgressRecord[];
+  certificate?: {
+    code: string;
+    url: string;
+    issuedAt: string;
+  };
+};
+
+export function getCourseProgressData(courseId: string): Promise<CourseProgressData> {
+  return apiRequest<CourseProgressData>(`/api/learning/courses/${courseId}/progress`);
+}
+
+export function updateCourseProgressData(
+  courseId: string,
+  data: { completedLessonIds?: string[]; lastAccessedLessonId?: string },
+): Promise<CourseProgressData> {
+  return apiRequest<CourseProgressData>(`/api/learning/courses/${courseId}/progress`, {
+    method: 'PATCH',
+    body: data,
+  });
+}
+
+// ─── My Learning ──────────────────────────────────────────────────────────────
+
 export type MyLearningCourse = {
   courseId: string;
   courseSlug: string;
