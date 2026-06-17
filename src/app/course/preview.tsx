@@ -22,6 +22,7 @@ import {
   Rewind,
 } from 'phosphor-react-native';
 import { Fonts } from '@/constants/theme';
+import { VideoSpinner } from '@/components/ui/video-spinner';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -178,7 +179,7 @@ export default function CoursePreviewScreen() {
       {/* ── 2. Buffering / pause icon (non-interactive, below tap zone) ──── */}
       {isLoading ? (
         <View style={styles.centered} pointerEvents="none">
-          <ActivityIndicator size="large" color="rgba(255,255,255,0.9)" />
+          <VideoSpinner size={40} />
         </View>
       ) : !isPlaying ? (
         <View style={styles.centered} pointerEvents="none">

@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEvent, useEventListener } from 'expo';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,9 +30,11 @@ import {
   Question,
   Rewind,
   Trophy,
+  DeviceRotate,
 } from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
+import { VideoSpinner } from '@/components/ui/video-spinner';
 import { getCourseDetail } from '@/lib/api/catalog';
 import {
   getLessonDetail,
@@ -83,9 +86,13 @@ type EmbeddedPlayerProps = {
   source: VideoSource;
   quality: string;
   onQualityChange: (q: string) => void;
+  isLandscape: boolean;
+  onToggleFullscreen: () => void;
 };
 
-function EmbeddedPlayer({ source, quality, onQualityChange }: EmbeddedPlayerProps) {
+function EmbeddedPlayer({ source, quality, onQualityChange, isLandscape, onToggleFullscreen }: EmbeddedPlayerProps) {
+  const [playerHeight, setPlayerHeight] = useState(0);
+
   useEffect(() => {
     console.log('[Player] mounted, uri:', source.uri, 'contentType:', source.contentType);
     return () => console.log('[Player] unmounted');
@@ -215,8 +222,16 @@ function EmbeddedPlayer({ source, quality, onQualityChange }: EmbeddedPlayerProp
     resetTimer();
   }
 
+  const overlayStyle = {
+    position: 'absolute' as const,
+    top: 0, left: 0, right: 0,
+    height: playerHeight,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  };
+
   return (
-    <View style={pStyles.root}>
+    <View style={pStyles.root} onLayout={e => setPlayerHeight(e.nativeEvent.layout.height)}>
       <VideoView
         player={player}
         style={StyleSheet.absoluteFill}
@@ -224,24 +239,24 @@ function EmbeddedPlayer({ source, quality, onQualityChange }: EmbeddedPlayerProp
         contentFit="contain"
       />
 
-      {/* Buffering */}
-      {isBuffering && (
-        <View style={pStyles.center} pointerEvents="none">
-          <ActivityIndicator size="large" color="rgba(255,255,255,0.9)" />
-        </View>
-      )}
-
-      {/* Center play when paused */}
-      {!isBuffering && !isPlaying && (
-        <View style={pStyles.center} pointerEvents="none">
-          <View style={pStyles.centerBtn}>
-            <Play size={32} color="#fff" weight="fill" />
-          </View>
+      {/* Buffering spinner */}
+      {isBuffering && playerHeight > 0 && (
+        <View style={overlayStyle} pointerEvents="none">
+          <VideoSpinner size={40} />
         </View>
       )}
 
       {/* Tap zone */}
       <Pressable style={StyleSheet.absoluteFill} onPress={handleTap} />
+
+      {/* Centred play button — on top of tap zone so taps go directly to togglePlay */}
+      {!isBuffering && !isPlaying && playerHeight > 0 && (
+        <Pressable style={overlayStyle} onPress={togglePlay}>
+          <View style={pStyles.centerBtn}>
+            <Play size={36} color="#fff" weight="fill" />
+          </View>
+        </Pressable>
+      )}
 
       {/* Controls overlay */}
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: ctrlOpacity }]} pointerEvents="box-none">
@@ -273,7 +288,7 @@ function EmbeddedPlayer({ source, quality, onQualityChange }: EmbeddedPlayerProp
               <Pressable onPress={() => skip(10)} style={({ pressed }) => [pStyles.btn, pressed && pStyles.btnPress]} hitSlop={8}>
                 <FastForward size={17} color="#fff" weight="fill" />
               </Pressable>
-              <Text style={pStyles.time}>{fmt(currentTime ?? 0)} / {fmt(duration)}</Text>
+              <Text style={[pStyles.time, isLandscape && { fontSize: 14 }]}>{fmt(currentTime ?? 0)} / {fmt(duration)}</Text>
             </View>
 
             {/* Right controls */}
@@ -294,6 +309,10 @@ function EmbeddedPlayer({ source, quality, onQualityChange }: EmbeddedPlayerProp
                 hitSlop={8}
               >
                 <Text style={pStyles.speedLabel}>{speed === 1 ? '1×' : `${speed}×`}</Text>
+              </Pressable>
+
+              <Pressable onPress={onToggleFullscreen} style={({ pressed }) => [{ marginLeft: 6, padding: 4 }, pressed && { opacity: 0.7 }]} hitSlop={12}>
+                <DeviceRotate size={22} color="#fff" weight={isLandscape ? 'fill' : 'regular'} />
               </Pressable>
             </View>
           </View>
@@ -338,8 +357,7 @@ function EmbeddedPlayer({ source, quality, onQualityChange }: EmbeddedPlayerProp
 }
 
 const pStyles = StyleSheet.create({
-  root: { width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000' },
-  center: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  root: { flex: 1, backgroundColor: '#000' },
   centerBtn: {
     width: 72, height: 72, borderRadius: 36,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -425,6 +443,42 @@ export default function CourseLearnScreen() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [completionCert, setCompletionCert] = useState<{ code: string; url: string } | null>(null);
   const [quality, setQuality] = useState<string>('Auto');
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  // Orientation handling
+  useEffect(() => {
+    ScreenOrientation.unlockAsync();
+
+    const sub = ScreenOrientation.addOrientationChangeListener((evt) => {
+      const o = evt.orientationInfo.orientation;
+      setIsLandscape(
+        o === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
+        o === ScreenOrientation.Orientation.LANDSCAPE_RIGHT
+      );
+    });
+
+    ScreenOrientation.getOrientationAsync().then(o => {
+      setIsLandscape(
+        o === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
+        o === ScreenOrientation.Orientation.LANDSCAPE_RIGHT
+      );
+    });
+
+    return () => {
+      ScreenOrientation.removeOrientationChangeListener(sub);
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    };
+  }, []);
+
+  function toggleFullscreen() {
+    if (isLandscape) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
+        .then(() => setTimeout(() => ScreenOrientation.unlockAsync(), 1000));
+    } else {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE)
+        .then(() => setTimeout(() => ScreenOrientation.unlockAsync(), 1000));
+    }
+  }
 
   // Sync server progress → local state
   useEffect(() => {
@@ -584,30 +638,26 @@ export default function CourseLearnScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
-      <StatusBar style="light" />
+      <StatusBar style="light" hidden={isLandscape} />
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
-          style={({ pressed }) => [styles.headerBack, pressed && { opacity: 0.6 }]}
-        >
-          <ArrowLeft size={22} color="#fff" weight="bold" />
-        </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle} numberOfLines={1}>{course.title}</Text>
-          <View style={styles.headerProgressRow}>
-            <View style={styles.headerProgressTrack}>
-              <View style={[styles.headerProgressFill, { width: `${progressPercent}%` as `${number}%` }]} />
-            </View>
-            <Text style={styles.headerProgressPct}>{progressPercent}%</Text>
+      {!isLandscape && (
+        <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={12}
+            style={({ pressed }) => [styles.headerBack, pressed && { opacity: 0.6 }]}
+          >
+            <ArrowLeft size={22} color="#fff" weight="bold" />
+          </Pressable>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle} numberOfLines={1}>{course.title}</Text>
           </View>
         </View>
-      </View>
+      )}
 
       {/* ── Video area ────────────────────────────────────────────────────── */}
-      <View style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000' }}>
+      <View style={isLandscape ? { flex: 1, backgroundColor: '#000' } : { width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000' }}>
         {showVideo && videoSource ? (
           // key forces full remount (new player) when lesson changes
           <EmbeddedPlayer 
@@ -615,11 +665,13 @@ export default function CourseLearnScreen() {
             source={videoSource} 
             quality={quality}
             onQualityChange={setQuality}
+            isLandscape={isLandscape}
+            onToggleFullscreen={toggleFullscreen}
           />
         ) : showVideo && (lessonLoading || (!videoStream && lessonDetail?.videoStatus === 'READY')) ? (
           // Loading lesson detail
           <View style={[StyleSheet.absoluteFill, styles.videoCenter]}>
-            <ActivityIndicator size="large" color="rgba(255,255,255,0.85)" />
+            <VideoSpinner size={40} />
           </View>
         ) : showVideo && videoStatusMsg ? (
           // PROCESSING or FAILED
@@ -638,180 +690,182 @@ export default function CourseLearnScreen() {
       </View>
 
       {/* ── Scrollable body ───────────────────────────────────────────────── */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollBody, { paddingBottom: insets.bottom + 28 }]}
-      >
-        {/* Lesson info card */}
-        <View style={[styles.lessonCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          {activeSection && (
-            <Text style={[styles.sectionBreadcrumb, { color: theme.textSecondary }]} numberOfLines={1}>
-              {activeSection.title}
+      {!isLandscape && (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollBody, { paddingBottom: insets.bottom + 28 }]}
+        >
+          {/* Lesson info card */}
+          <View style={[styles.lessonCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            {activeSection && (
+              <Text style={[styles.sectionBreadcrumb, { color: theme.textSecondary }]} numberOfLines={1}>
+                {activeSection.title}
+              </Text>
+            )}
+            <Text style={[styles.lessonCardTitle, { color: theme.text }]} numberOfLines={2}>
+              {activeLesson?.title ?? 'Select a lesson'}
             </Text>
-          )}
-          <Text style={[styles.lessonCardTitle, { color: theme.text }]} numberOfLines={2}>
-            {activeLesson?.title ?? 'Select a lesson'}
-          </Text>
 
-          <View style={styles.progressRow}>
-            <View style={[styles.progressTrack, { backgroundColor: theme.surfaceEl }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { backgroundColor: progressPercent === 100 ? theme.success : theme.primary },
-                  { width: `${progressPercent}%` as `${number}%` },
-                ]}
-              />
+            <View style={styles.progressRow}>
+              <View style={[styles.progressTrack, { backgroundColor: theme.surfaceEl }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { backgroundColor: progressPercent === 100 ? theme.success : theme.primary },
+                    { width: `${progressPercent}%` as `${number}%` },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.progressLabel, { color: theme.primary }]}>
+                {completedIds.length}/{allLessons.length}
+              </Text>
             </View>
-            <Text style={[styles.progressLabel, { color: theme.primary }]}>
-              {completedIds.length}/{allLessons.length}
-            </Text>
-          </View>
 
-          <View style={styles.actionsRow}>
-            <Pressable
-              onPress={() => prevLesson && selectLesson(prevLesson)}
-              disabled={!prevLesson}
-              style={({ pressed }) => [
-                styles.navBtn,
-                { borderColor: theme.border, backgroundColor: theme.surface },
-                !prevLesson && { opacity: 0.3 },
-                pressed && { backgroundColor: theme.surfaceEl },
-              ]}
-            >
-              <ArrowLeft size={18} color={theme.text} weight="bold" />
-            </Pressable>
-
-            <Pressable
-              onPress={toggleComplete}
-              disabled={!activeLesson}
-              style={({ pressed }) => [
-                styles.completeBtn,
-                isCompleted
-                  ? { backgroundColor: theme.success + '1A', borderWidth: 1, borderColor: theme.success }
-                  : { backgroundColor: theme.primary },
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              {isCompleted ? (
-                <>
-                  <CheckCircle size={15} color={theme.success} weight="fill" />
-                  <Text style={[styles.completeBtnText, { color: theme.success }]}>Completed</Text>
-                </>
-              ) : (
-                <Text style={[styles.completeBtnText, { color: '#fff' }]}>Mark Complete</Text>
-              )}
-            </Pressable>
-
-            <Pressable
-              onPress={() => nextLesson && selectLesson(nextLesson)}
-              disabled={!nextLesson}
-              style={({ pressed }) => [
-                styles.navBtn,
-                { borderColor: theme.border, backgroundColor: theme.surface },
-                !nextLesson && { opacity: 0.3 },
-                pressed && { backgroundColor: theme.surfaceEl },
-              ]}
-            >
-              <ArrowRight size={18} color={theme.text} weight="bold" />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Curriculum */}
-        <View style={[styles.curriculumCard, { backgroundColor: theme.surface }]}>
-          <View style={styles.curriculumHeader}>
-            <Text style={[styles.curriculumTitle, { color: theme.text }]}>Course Content</Text>
-            <Text style={[styles.curriculumMeta, { color: theme.textSecondary }]}>
-              {completedIds.length}/{allLessons.length} complete
-            </Text>
-          </View>
-
-          {course.sections.map((section, sIdx) => {
-            const isOpen = !!expandedSections[section.id];
-            const doneCount = section.lessons.filter(l => completedIds.includes(l.id)).length;
-            const isLast = sIdx === course.sections.length - 1;
-
-            return (
-              <View
-                key={section.id}
-                style={[
-                  styles.sectionBlock,
-                  !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
+            <View style={styles.actionsRow}>
+              <Pressable
+                onPress={() => prevLesson && selectLesson(prevLesson)}
+                disabled={!prevLesson}
+                style={({ pressed }) => [
+                  styles.navBtn,
+                  { borderColor: theme.border, backgroundColor: theme.surface },
+                  !prevLesson && { opacity: 0.3 },
+                  pressed && { backgroundColor: theme.surfaceEl },
                 ]}
               >
-                <Pressable
-                  onPress={() => setExpandedSections(prev => ({ ...prev, [section.id]: !isOpen }))}
-                  style={({ pressed }) => [styles.sectionHeader, pressed && { backgroundColor: theme.surfaceEl }]}
+                <ArrowLeft size={18} color={theme.text} weight="bold" />
+              </Pressable>
+
+              <Pressable
+                onPress={toggleComplete}
+                disabled={!activeLesson}
+                style={({ pressed }) => [
+                  styles.completeBtn,
+                  isCompleted
+                    ? { backgroundColor: theme.success + '1A', borderWidth: 1, borderColor: theme.success }
+                    : { backgroundColor: theme.primary },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                {isCompleted ? (
+                  <>
+                    <CheckCircle size={15} color={theme.success} weight="fill" />
+                    <Text style={[styles.completeBtnText, { color: theme.success }]}>Completed</Text>
+                  </>
+                ) : (
+                  <Text style={[styles.completeBtnText, { color: '#fff' }]}>Mark Complete</Text>
+                )}
+              </Pressable>
+
+              <Pressable
+                onPress={() => nextLesson && selectLesson(nextLesson)}
+                disabled={!nextLesson}
+                style={({ pressed }) => [
+                  styles.navBtn,
+                  { borderColor: theme.border, backgroundColor: theme.surface },
+                  !nextLesson && { opacity: 0.3 },
+                  pressed && { backgroundColor: theme.surfaceEl },
+                ]}
+              >
+                <ArrowRight size={18} color={theme.text} weight="bold" />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Curriculum */}
+          <View style={[styles.curriculumCard, { backgroundColor: theme.surface }]}>
+            <View style={styles.curriculumHeader}>
+              <Text style={[styles.curriculumTitle, { color: theme.text }]}>Course Content</Text>
+              <Text style={[styles.curriculumMeta, { color: theme.textSecondary }]}>
+                {completedIds.length}/{allLessons.length} complete
+              </Text>
+            </View>
+
+            {course.sections.map((section, sIdx) => {
+              const isOpen = !!expandedSections[section.id];
+              const doneCount = section.lessons.filter(l => completedIds.includes(l.id)).length;
+              const isLast = sIdx === course.sections.length - 1;
+
+              return (
+                <View
+                  key={section.id}
+                  style={[
+                    styles.sectionBlock,
+                    !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
+                  ]}
                 >
-                  <View style={styles.sectionHeaderText}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]} numberOfLines={2}>
-                      {section.title}
-                    </Text>
-                    <Text style={[styles.sectionMeta, { color: theme.textSecondary }]}>
-                      {doneCount}/{section.lessons.length} lessons
-                    </Text>
-                  </View>
-                  {isOpen
-                    ? <CaretUp size={15} color={theme.textSecondary} weight="bold" />
-                    : <CaretDown size={15} color={theme.textSecondary} weight="bold" />}
-                </Pressable>
+                  <Pressable
+                    onPress={() => setExpandedSections(prev => ({ ...prev, [section.id]: !isOpen }))}
+                    style={({ pressed }) => [styles.sectionHeader, pressed && { backgroundColor: theme.surfaceEl }]}
+                  >
+                    <View style={styles.sectionHeaderText}>
+                      <Text style={[styles.sectionTitle, { color: theme.text }]} numberOfLines={2}>
+                        {section.title}
+                      </Text>
+                      <Text style={[styles.sectionMeta, { color: theme.textSecondary }]}>
+                        {doneCount}/{section.lessons.length} lessons
+                      </Text>
+                    </View>
+                    {isOpen
+                      ? <CaretUp size={15} color={theme.textSecondary} weight="bold" />
+                      : <CaretDown size={15} color={theme.textSecondary} weight="bold" />}
+                  </Pressable>
 
-                {isOpen && section.lessons.map((lesson, lIdx) => {
-                  const done = completedIds.includes(lesson.id);
-                  const active = lesson.id === activeLesson?.id;
-                  const isLastLesson = lIdx === section.lessons.length - 1;
+                  {isOpen && section.lessons.map((lesson, lIdx) => {
+                    const done = completedIds.includes(lesson.id);
+                    const active = lesson.id === activeLesson?.id;
+                    const isLastLesson = lIdx === section.lessons.length - 1;
 
-                  return (
-                    <Pressable
-                      key={lesson.id}
-                      onPress={() => selectLesson(lesson)}
-                      style={({ pressed }) => [
-                        styles.lessonRow,
-                        active && { backgroundColor: theme.primaryLight },
-                        !active && pressed && { backgroundColor: theme.surfaceEl },
-                        !isLastLesson && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
-                      ]}
-                    >
-                      <View style={styles.lessonRowIcon}>
-                        <LessonTypeIcon
-                          type={lesson.type}
-                          color={active ? theme.primary : theme.textSecondary}
-                          size={14}
-                        />
-                      </View>
-                      <View style={styles.lessonRowBody}>
-                        <Text
-                          style={[
-                            styles.lessonRowTitle,
-                            { color: active ? theme.primary : theme.text },
-                            active && { fontFamily: Fonts.semiBold },
-                          ]}
-                          numberOfLines={2}
-                        >
-                          {lesson.title}
-                        </Text>
-                        {!!lesson.duration && lesson.duration > 0 && (
-                          <Text style={[styles.lessonRowDur, { color: theme.textSecondary }]}>
-                            {formatDuration(lesson.duration)}
+                    return (
+                      <Pressable
+                        key={lesson.id}
+                        onPress={() => selectLesson(lesson)}
+                        style={({ pressed }) => [
+                          styles.lessonRow,
+                          active && { backgroundColor: theme.primaryLight },
+                          !active && pressed && { backgroundColor: theme.surfaceEl },
+                          !isLastLesson && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
+                        ]}
+                      >
+                        <View style={styles.lessonRowIcon}>
+                          <LessonTypeIcon
+                            type={lesson.type}
+                            color={active ? theme.primary : theme.textSecondary}
+                            size={14}
+                          />
+                        </View>
+                        <View style={styles.lessonRowBody}>
+                          <Text
+                            style={[
+                              styles.lessonRowTitle,
+                              { color: active ? theme.primary : theme.text },
+                              active && { fontFamily: Fonts.semiBold },
+                            ]}
+                            numberOfLines={2}
+                          >
+                            {lesson.title}
                           </Text>
+                          {!!lesson.duration && lesson.duration > 0 && (
+                            <Text style={[styles.lessonRowDur, { color: theme.textSecondary }]}>
+                              {formatDuration(lesson.duration)}
+                            </Text>
+                          )}
+                        </View>
+                        {done ? (
+                          <CheckCircle size={16} color={theme.success} weight="fill" />
+                        ) : active ? (
+                          <Play size={13} color={theme.primary} weight="fill" />
+                        ) : (
+                          <View style={[styles.emptyCircle, { borderColor: theme.border }]} />
                         )}
-                      </View>
-                      {done ? (
-                        <CheckCircle size={16} color={theme.success} weight="fill" />
-                      ) : active ? (
-                        <Play size={13} color={theme.primary} weight="fill" />
-                      ) : (
-                        <View style={[styles.emptyCircle, { borderColor: theme.border }]} />
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+      )}
 
       {/* ── Completion modal ──────────────────────────────────────────────── */}
       {completionCert && (
