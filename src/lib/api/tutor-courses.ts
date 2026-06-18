@@ -29,44 +29,72 @@ export type TutorSection = {
   lessons: TutorLesson[];
 };
 
+// Matches actual API response field names (list + detail)
 export type TutorCourse = {
   id: string;
   title: string;
   slug: string;
   shortDescription: string | null;
-  detailedDescription: string | null;
   level: CourseLevel;
   language: string;
   thumbnail: string | null;
-  promoVideoUrl: string | null;
-  whatYouLearn: string[];
-  whoIsFor: string[];
-  prerequisites: string[];
-  requirements: string[];
+  promoVideoUrl?: string | null;
   isFree: boolean;
   price: number | null;
-  discountPercent: number | null;
+  discountPercent?: number | null;
   status: CourseStatus;
-  studentsCount: number;
-  earnings: number;
-  rating: number | null;
-  reviewsCount: number;
-  categoryId: string | null;
-  categoryName: string | null;
-  subcategoryId: string | null;
-  subcategoryName: string | null;
-  sections: TutorSection[];
+  // List response uses these names
+  totalStudents: number;
+  totalRevenue: number;
+  averageRating?: number | null;
+  totalSections?: number;
+  totalLessons?: number;
+  totalDuration?: number;
+  // Detail response includes full sections + content arrays
+  sections?: TutorSection[];
+  whatYouLearn?: string[] | null;
+  whoIsFor?: string[] | null;
+  requirements?: string[] | null;
+  prerequisites?: string[] | null;
+  detailedDescription?: string | null;
+  category?: { id: string; name: string; slug: string } | null;
+  subCategory?: { id: string; name: string; slug: string } | null;
   createdAt: string;
   updatedAt: string;
 };
 
 export type CreateCourseInput = {
   title: string;
+  categoryId: string;
+  subCategoryId?: string | null;
   shortDescription?: string;
-  categoryId?: string;
-  subcategoryId?: string;
   level?: CourseLevel;
   language?: string;
+  isFree?: boolean;
+  sections: {
+    title: string;
+    description?: string;
+    order: number;
+    lessons: {
+      title: string;
+      type: LessonType;
+      content?: string;
+      duration?: number;
+      isFreePreview?: boolean;
+      order: number;
+    }[];
+  }[];
+};
+
+export type CreateCourseResponse = {
+  id: string;
+  title: string;
+  slug: string;
+  status: CourseStatus;
+  totalSections: number;
+  totalLessons: number;
+  category: { id: string; name: string; slug: string };
+  createdAt: string;
 };
 
 export type UpdateCourseInput = Partial<{
@@ -85,7 +113,7 @@ export type UpdateCourseInput = Partial<{
   price: number;
   discountPercent: number;
   categoryId: string;
-  subcategoryId: string;
+  subCategoryId: string;
 }>;
 
 export type UpdateLessonInput = Partial<{
@@ -97,24 +125,25 @@ export type UpdateLessonInput = Partial<{
   order: number;
 }>;
 
-export async function getMyCourses(params?: { status?: CourseStatus; page?: number }): Promise<{ courses: TutorCourse[]; total: number }> {
+// API returns array directly via successWithMeta(array, meta) → data is the array
+export async function getMyCourses(params?: { status?: CourseStatus; page?: number }): Promise<TutorCourse[]> {
   const query = new URLSearchParams();
   if (params?.status) query.set('status', params.status);
   if (params?.page) query.set('page', String(params.page));
   const qs = query.toString();
-  return tutorApiRequest<{ courses: TutorCourse[]; total: number }>(`/api/courses${qs ? `?${qs}` : ''}`);
+  return tutorApiRequest<TutorCourse[]>(`/api/courses${qs ? `?${qs}` : ''}`);
 }
 
 export async function getCourse(id: string): Promise<TutorCourse> {
   return tutorApiRequest<TutorCourse>(`/api/courses/${id}`);
 }
 
-export async function createCourse(data: CreateCourseInput): Promise<TutorCourse> {
-  return tutorApiRequest<TutorCourse>('/api/courses', { method: 'POST', body: data });
+export async function createCourse(data: CreateCourseInput): Promise<CreateCourseResponse> {
+  return tutorApiRequest<CreateCourseResponse>('/api/courses', { method: 'POST', body: data });
 }
 
-export async function updateCourse(id: string, data: UpdateCourseInput): Promise<TutorCourse> {
-  return tutorApiRequest<TutorCourse>(`/api/courses/${id}`, { method: 'PUT', body: data });
+export async function updateCourse(id: string, data: UpdateCourseInput): Promise<{ id: string; title: string; slug: string; status: CourseStatus; updatedAt: string }> {
+  return tutorApiRequest(`/api/courses/${id}`, { method: 'PUT', body: data });
 }
 
 export async function deleteCourse(id: string): Promise<void> {

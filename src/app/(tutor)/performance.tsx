@@ -91,16 +91,16 @@ export default function TutorPerformance() {
         >
           {/* Summary tiles */}
           <View style={styles.statsRow}>
-            <StatTile label="Revenue" value={`₹${(d.totalRevenue / 1000).toFixed(0)}K`} accent="#EC7211" />
-            <StatTile label="Rating" value={d.avgRating.toFixed(1)} subValue="avg" accent={theme.star} />
+            <StatTile label="Revenue" value={`₹${((d.totalRevenue ?? 0) / 1000).toFixed(0)}K`} accent="#EC7211" />
+            <StatTile label="Rating" value={(d.avgRating ?? 0).toFixed(1)} subValue="avg" accent={theme.star} />
           </View>
           <View style={styles.statsRow}>
-            <StatTile label="Enrollments" value={d.totalEnrollments} accent="#059669" />
-            <StatTile label="Completion" value={`${d.completionRate.toFixed(0)}%`} accent={theme.primary} />
+            <StatTile label="Enrollments" value={d.totalEnrollments ?? 0} accent="#059669" />
+            <StatTile label="Completion" value={`${(d.completionRate ?? 0).toFixed(0)}%`} accent={theme.primary} />
           </View>
 
           {/* Revenue chart */}
-          {d.monthlyRevenue?.length > 0 && (
+          {(d.monthlyRevenue?.length ?? 0) > 0 && (
             <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Text style={[styles.cardTitle, { color: theme.text }]}>Monthly Revenue</Text>
               <BarChart data={d.monthlyRevenue} />
@@ -117,7 +117,7 @@ export default function TutorPerformance() {
                   <View style={styles.rankBody}>
                     <Text style={[styles.rankTitle, { color: theme.text }]} numberOfLines={1}>{c.title}</Text>
                     <View style={styles.rankMeta}>
-                      <Users size={11} color={theme.textSecondary} weight="bold" />
+                      <Users size={11} color={theme.textSecondary} weight="regular" />
                       <Text style={[styles.rankMetaText, { color: theme.textSecondary }]}>{c.enrollments}</Text>
                     </View>
                   </View>
@@ -130,12 +130,12 @@ export default function TutorPerformance() {
           )}
 
           {/* Rating distribution */}
-          {d.ratingDistribution?.length > 0 && (
+          {(d.ratingDistribution?.length ?? 0) > 0 && (
             <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={styles.cardHeaderRow}>
                 <Text style={[styles.cardTitle, { color: theme.text }]}>Review Breakdown</Text>
                 <View style={styles.ratingBig}>
-                  <Text style={[styles.ratingNum, { color: theme.text }]}>{d.avgRating.toFixed(1)}</Text>
+                  <Text style={[styles.ratingNum, { color: theme.text }]}>{(d.avgRating ?? 0).toFixed(1)}</Text>
                   <Star size={16} color={theme.star} weight="fill" />
                 </View>
               </View>

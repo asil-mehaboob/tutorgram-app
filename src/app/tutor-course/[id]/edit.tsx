@@ -114,7 +114,7 @@ export default function EditCourse() {
       <View style={[styles.root, { backgroundColor: theme.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
           <Pressable onPress={() => router.back()} style={styles.back}>
-            <ArrowLeft size={22} color={theme.text} weight="bold" />
+            <ArrowLeft size={22} color={theme.text} weight="regular" />
           </Pressable>
           <View style={styles.headerCenter}>
             <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>{course?.title ?? 'Edit Course'}</Text>
@@ -124,7 +124,7 @@ export default function EditCourse() {
             onPress={() => router.push({ pathname: '/tutor-course/[id]/curriculum', params: { id: id! } })}
             style={({ pressed }) => [styles.curriculumBtn, { backgroundColor: theme.surfaceEl, opacity: pressed ? 0.7 : 1 }]}
           >
-            <ListBullets size={16} color={theme.textSecondary} weight="bold" />
+            <ListBullets size={16} color={theme.textSecondary} weight="regular" />
             <Text style={[styles.curriculumText, { color: theme.textSecondary }]}>Curriculum</Text>
           </Pressable>
         </View>

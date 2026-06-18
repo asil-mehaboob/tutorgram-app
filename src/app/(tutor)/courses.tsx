@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, BookOpen } from 'phosphor-react-native';
@@ -10,12 +10,10 @@ import { CourseRow } from '@/components/tutor/course-row';
 import { getMyCourses, deleteCourse, publishCourse } from '@/lib/api/tutor-courses';
 import type { CourseStatus, TutorCourse } from '@/lib/api/tutor-courses';
 
-const FILTERS: { label: string; value: CourseStatus | 'ALL' }[] = [
+const TABS: { label: string; value: CourseStatus | 'ALL' }[] = [
   { label: 'All', value: 'ALL' },
   { label: 'Published', value: 'PUBLISHED' },
   { label: 'Draft', value: 'DRAFT' },
-  { label: 'In Review', value: 'PENDING_REVIEW' },
-  { label: 'Archived', value: 'ARCHIVED' },
 ];
 
 export default function TutorCourses() {
@@ -62,7 +60,7 @@ export default function TutorCourses() {
     Alert.alert(course.title, undefined, actions);
   }
 
-  const courses = data?.courses ?? [];
+  const courses = data ?? [];
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
@@ -73,37 +71,22 @@ export default function TutorCourses() {
           onPress={() => router.push('/tutor-course/create')}
           style={({ pressed }) => [styles.newBtn, { backgroundColor: theme.primary, opacity: pressed ? 0.85 : 1 }]}
         >
-          <Plus size={16} color="#fff" weight="bold" />
+          <Plus size={16} color="#fff" weight="regular" />
           <Text style={styles.newBtnText}>New</Text>
         </Pressable>
       </View>
 
-      {/* Filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.filters, { borderBottomColor: theme.border }]}
-      >
-        {FILTERS.map((f) => (
-          <Pressable
-            key={f.value}
-            onPress={() => setFilter(f.value)}
-            style={[
-              styles.chip,
-              filter === f.value
-                ? { backgroundColor: theme.primaryLight, borderColor: theme.primary }
-                : { backgroundColor: theme.surface, borderColor: theme.border },
-            ]}
-          >
-            <Text style={[
-              styles.chipText,
-              { color: filter === f.value ? theme.primary : theme.textSecondary },
-            ]}>
-              {f.label}
+      {/* Tab bar */}
+      <View style={[styles.tabBar, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        {TABS.map((t) => (
+          <Pressable key={t.value} onPress={() => setFilter(t.value)} style={styles.tabItem}>
+            <Text style={[styles.tabLabel, { color: filter === t.value ? theme.primary : theme.textSecondary }]}>
+              {t.label}
             </Text>
+            {filter === t.value && <View style={[styles.tabIndicator, { backgroundColor: theme.primary }]} />}
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
 
       {isLoading ? (
         <View style={styles.center}>
@@ -169,20 +152,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   newBtnText: { fontSize: 13, fontFamily: Fonts.bold, color: '#fff' },
-  filters: {
+  tabBar: {
     flexDirection: 'row',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 10,
-    gap: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
   },
-  chipText: { fontSize: 12, fontFamily: Fonts.semiBold },
+  tabLabel: { fontSize: 13, fontFamily: Fonts.semiBold },
+  tabIndicator: { position: 'absolute', bottom: 0, left: '15%', right: '15%', height: 2, borderRadius: 1 },
   list: { padding: Spacing.three },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: Spacing.five },
   emptyTitle: { fontSize: 18, fontFamily: Fonts.bold, textAlign: 'center' },

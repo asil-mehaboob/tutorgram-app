@@ -23,6 +23,12 @@ export function CourseRow({ course, onEdit, onMore }: CourseRowProps) {
   const theme = useTheme();
   const bg = fallbackColor(course.id);
 
+  function fmtRevenue(n: number) {
+    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+    if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
+    return `₹${n}`;
+  }
+
   return (
     <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       {course.thumbnail ? (
@@ -39,29 +45,23 @@ export function CourseRow({ course, onEdit, onMore }: CourseRowProps) {
         <StatusChip status={course.status} small />
         <View style={styles.meta}>
           <View style={styles.metaItem}>
-            <Student size={12} color={theme.textSecondary} weight="bold" />
-            <Text style={[styles.metaText, { color: theme.textSecondary }]}>{course.studentsCount}</Text>
+            <Student size={12} color={theme.textSecondary} weight="regular" />
+            <Text style={[styles.metaText, { color: theme.textSecondary }]}>{course.totalStudents ?? 0}</Text>
           </View>
           <View style={styles.metaItem}>
-            <CurrencyInr size={12} color={theme.textSecondary} weight="bold" />
+            <CurrencyInr size={12} color={theme.textSecondary} weight="regular" />
             <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-              {course.earnings.toLocaleString('en-IN')}
+              {fmtRevenue(course.totalRevenue ?? 0)}
             </Text>
           </View>
         </View>
       </View>
       <View style={styles.actions}>
-        <Pressable
-          onPress={onEdit}
-          style={({ pressed }) => [styles.actionBtn, { backgroundColor: theme.primaryLight, opacity: pressed ? 0.7 : 1 }]}
-        >
-          <PencilSimple size={16} color={theme.primary} weight="bold" />
+        <Pressable onPress={onEdit} hitSlop={8}>
+          <PencilSimple size={18} color={theme.textSecondary} weight="regular" />
         </Pressable>
-        <Pressable
-          onPress={onMore}
-          style={({ pressed }) => [styles.actionBtn, { backgroundColor: theme.surfaceEl, opacity: pressed ? 0.7 : 1 }]}
-        >
-          <DotsThreeVertical size={16} color={theme.textSecondary} weight="bold" />
+        <Pressable onPress={onMore} hitSlop={8}>
+          <DotsThreeVertical size={18} color={theme.textSecondary} weight="regular" />
         </Pressable>
       </View>
     </View>
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   },
   thumbInitial: {
     fontSize: 22,
-    fontFamily: 'PlusJakartaSans-Bold',
+    fontFamily: Fonts.bold,
     color: '#fff',
   },
   body: {
@@ -114,14 +114,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.medium,
   },
   actions: {
-    gap: 6,
-    alignItems: 'center',
-  },
-  actionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
+    gap: 12,
     alignItems: 'center',
   },
 });

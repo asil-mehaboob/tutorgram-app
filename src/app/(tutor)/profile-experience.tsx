@@ -23,29 +23,13 @@ export default function ProfileExperience() {
 
   const { data } = useQuery({ queryKey: ['tutor-experience'], queryFn: getExperience, staleTime: 5 * 60_000 });
 
-  const createM = useMutation({
-    mutationFn: () => createExperience(form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tutor-experience'] }); closeForm(); },
-  });
-
-  const updateM = useMutation({
-    mutationFn: () => updateExperience(editing!.id, form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tutor-experience'] }); closeForm(); },
-  });
-
-  const deleteM = useMutation({
-    mutationFn: (id: string) => deleteExperience(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tutor-experience'] }),
-  });
+  const createM = useMutation({ mutationFn: () => createExperience(form), onSuccess: () => { qc.invalidateQueries({ queryKey: ['tutor-experience'] }); closeForm(); } });
+  const updateM = useMutation({ mutationFn: () => updateExperience(editing!.id, form), onSuccess: () => { qc.invalidateQueries({ queryKey: ['tutor-experience'] }); closeForm(); } });
+  const deleteM = useMutation({ mutationFn: (id: string) => deleteExperience(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['tutor-experience'] }) });
 
   function openAdd() { setEditing(null); setForm(EMPTY); setShowForm(true); }
   function openEdit(item: TutorExperience) { setEditing(item); setForm({ title: item.title, company: item.company, location: item.location ?? '', startDate: item.startDate, endDate: item.endDate, isCurrent: item.isCurrent, description: item.description ?? '' }); setShowForm(true); }
   function closeForm() { setShowForm(false); setEditing(null); setForm(EMPTY); }
-
-  function handleSave() {
-    if (!form.title || !form.company) return;
-    editing ? updateM.mutate() : createM.mutate();
-  }
 
   function confirmDelete(item: TutorExperience) {
     Alert.alert('Delete', `Remove "${item.title} at ${item.company}"?`, [
@@ -57,10 +41,12 @@ export default function ProfileExperience() {
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.back}><ArrowLeft size={22} color={theme.text} weight="bold" /></Pressable>
+        <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}>
+          <ArrowLeft size={22} color={theme.text} weight="regular" />
+        </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Experience</Text>
-        <Pressable onPress={openAdd} style={[styles.addBtn, { backgroundColor: theme.primaryLight }]}>
-          <Plus size={18} color={theme.primary} weight="bold" />
+        <Pressable onPress={openAdd} style={styles.addBtn} hitSlop={8}>
+          <Plus size={22} color={theme.primary} weight="regular" />
         </Pressable>
       </View>
 
@@ -79,11 +65,11 @@ export default function ProfileExperience() {
               </Text>
             </View>
             <View style={styles.cardActions}>
-              <Pressable onPress={() => openEdit(item)} style={[styles.iconBtn, { backgroundColor: theme.primaryLight }]}>
-                <PencilSimple size={15} color={theme.primary} weight="bold" />
+              <Pressable onPress={() => openEdit(item)} hitSlop={8}>
+                <PencilSimple size={18} color={theme.textSecondary} weight="regular" />
               </Pressable>
-              <Pressable onPress={() => confirmDelete(item)} style={[styles.iconBtn, { backgroundColor: '#FFEBEE' }]}>
-                <Trash size={15} color={theme.error} weight="bold" />
+              <Pressable onPress={() => confirmDelete(item)} hitSlop={8}>
+                <Trash size={18} color={theme.error} weight="regular" />
               </Pressable>
             </View>
           </View>
@@ -109,7 +95,7 @@ export default function ProfileExperience() {
               <Input label="End Date" value={form.endDate ?? ''} onChangeText={(v) => setForm({ ...form, endDate: v })} placeholder="e.g. Dec 2023" />
             )}
             <Input label="Description" value={form.description ?? ''} onChangeText={(v) => setForm({ ...form, description: v })} placeholder="Describe your role..." multiline numberOfLines={4} style={{ minHeight: 100, textAlignVertical: 'top' }} />
-            <Button label="Save" onPress={handleSave} loading={createM.isPending || updateM.isPending} />
+            <Button label="Save" onPress={() => editing ? updateM.mutate() : createM.mutate()} loading={createM.isPending || updateM.isPending} />
           </ScrollView>
         </View>
       </Modal>
@@ -122,16 +108,15 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: Spacing.three, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   back: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 18, fontFamily: Fonts.bold },
-  addBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  addBtn: { padding: 4 },
   list: { padding: Spacing.three, gap: 10 },
   empty: { textAlign: 'center', fontSize: 15, fontFamily: Fonts.regular, paddingVertical: 40 },
-  card: { flexDirection: 'row', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 10 },
+  card: { flexDirection: 'row', alignItems: 'flex-start', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 12 },
   cardBody: { flex: 1, gap: 3 },
   cardTitle: { fontSize: 14, fontFamily: Fonts.semiBold },
   cardSub: { fontSize: 13, fontFamily: Fonts.regular },
   cardDate: { fontSize: 11, fontFamily: Fonts.regular, marginTop: 2 },
-  cardActions: { gap: 6 },
-  iconBtn: { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  cardActions: { flexDirection: 'row', gap: 16, paddingTop: 2 },
   modal: { flex: 1 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth },
   modalTitle: { fontSize: 17, fontFamily: Fonts.bold },

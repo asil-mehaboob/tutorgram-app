@@ -51,7 +51,7 @@ export default function ProfileSocialLinks() {
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.back}><ArrowLeft size={22} color={theme.text} weight="bold" /></Pressable>
+        <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}><ArrowLeft size={22} color={theme.text} weight="regular" /></Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Social Links</Text>
       </View>
 
@@ -63,9 +63,7 @@ export default function ProfileSocialLinks() {
             const Icon = p.icon;
             return (
               <View key={p.key} style={styles.row}>
-                <View style={[styles.iconWrap, { backgroundColor: theme.surfaceEl }]}>
-                  <Icon size={20} color={theme.textSecondary} weight="fill" />
-                </View>
+                <Icon size={20} color={theme.textSecondary} weight="regular" style={styles.platformIcon} />
                 <View style={styles.inputWrap}>
                   <Input
                     label={p.label}
@@ -98,7 +96,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll: { padding: Spacing.three, gap: 14 },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  iconWrap: { width: 44, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  platformIcon: { marginBottom: 12 },
   inputWrap: { flex: 1 },
   errorText: { fontSize: 13, fontFamily: Fonts.regular, textAlign: 'center' },
 });

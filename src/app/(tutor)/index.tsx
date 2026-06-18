@@ -29,7 +29,7 @@ function TransactionStatusIcon({ status }: { status: DashboardTransaction['statu
   switch (status) {
     case 'COMPLETED': return <CheckCircle size={16} color={theme.success} weight="fill" />;
     case 'FAILED': return <XCircle size={16} color={theme.error} weight="fill" />;
-    case 'REFUNDED': return <ArrowCounterClockwise size={16} color={theme.textSecondary} weight="bold" />;
+    case 'REFUNDED': return <ArrowCounterClockwise size={16} color={theme.textSecondary} weight="regular" />;
     default: return <Clock size={16} color={theme.star} weight="fill" />;
   }
 }
@@ -140,10 +140,6 @@ export default function TutorDashboard() {
     queryFn: getDashboardOverview,
     staleTime: 2 * 60 * 1000,
   });
-
-  const initials = user?.name
-    ? user.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
-    : 'T';
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>

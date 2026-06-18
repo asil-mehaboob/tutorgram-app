@@ -83,10 +83,10 @@ export default function CourseCurriculum() {
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.back}><ArrowLeft size={22} color={theme.text} weight="bold" /></Pressable>
+        <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}><ArrowLeft size={22} color={theme.text} weight="regular" /></Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Curriculum</Text>
-        <Pressable onPress={() => setShowAddSection(true)} style={[styles.addBtn, { backgroundColor: theme.primaryLight }]}>
-          <Plus size={18} color={theme.primary} weight="bold" />
+        <Pressable onPress={() => setShowAddSection(true)} style={styles.addBtn}>
+          <Plus size={18} color={theme.primary} weight="regular" />
           <Text style={[styles.addBtnText, { color: theme.primary }]}>Section</Text>
         </Pressable>
       </View>
@@ -111,18 +111,18 @@ export default function CourseCurriculum() {
                 <View style={styles.sectionActions}>
                   <Pressable
                     onPress={() => { setAddingLessonTo(section.id); setNewLessonTitle(''); setNewLessonType('VIDEO'); }}
-                    style={[styles.secActionBtn, { backgroundColor: theme.primaryLight }]}
+                    hitSlop={8}
                   >
-                    <Plus size={14} color={theme.primary} weight="bold" />
+                    <Plus size={16} color={theme.primary} weight="regular" />
                   </Pressable>
                   <Pressable
                     onPress={() => Alert.alert('Delete Section', `Delete "${section.title}" and all its lessons?`, [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Delete', style: 'destructive', onPress: () => deleteSection(section.id) },
                     ])}
-                    style={[styles.secActionBtn, { backgroundColor: '#FFEBEE' }]}
+                    hitSlop={8}
                   >
-                    <Trash size={14} color={theme.error} weight="bold" />
+                    <Trash size={16} color={theme.error} weight="regular" />
                   </Pressable>
                 </View>
               </View>
@@ -144,7 +144,7 @@ export default function CourseCurriculum() {
                     ])}
                     style={styles.lessonDeleteBtn}
                   >
-                    <Trash size={13} color={theme.error} weight="bold" />
+                    <Trash size={14} color={theme.error} weight="regular" />
                   </Pressable>
                 </View>
               ))}
@@ -213,18 +213,17 @@ const styles = StyleSheet.create({
   addFirstBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
   addFirstBtnText: { fontSize: 15, fontFamily: Fonts.bold, color: '#fff' },
   scroll: { padding: Spacing.three, gap: 12 },
-  sectionCard: { borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  sectionCard: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
   sectionNum: { fontSize: 10, fontFamily: Fonts.bold, letterSpacing: 0.5 },
   sectionTitle: { flex: 1, fontSize: 13, fontFamily: Fonts.semiBold },
-  sectionActions: { flexDirection: 'row', gap: 6 },
-  secActionBtn: { width: 26, height: 26, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
+  sectionActions: { flexDirection: 'row', gap: 16 },
   lessonRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
   lessonTitle: { flex: 1, fontSize: 13, fontFamily: Fonts.regular },
   lessonDuration: { fontSize: 11, fontFamily: Fonts.regular },
   previewBtn: { padding: 4 },
   lessonDeleteBtn: { padding: 4 },
-  addLessonForm: { borderTopWidth: 1, padding: 10, gap: 8 },
+  addLessonForm: { borderTopWidth: StyleSheet.hairlineWidth, padding: 10, gap: 8 },
   lessonTypeRow: { flexDirection: 'row', gap: 6 },
   typeBtn: { flex: 1, paddingVertical: 6, borderRadius: 6, borderWidth: 1, alignItems: 'center' },
   typeBtnText: { fontSize: 11, fontFamily: Fonts.semiBold },

@@ -33,10 +33,10 @@ export default function ProfileEducation() {
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.back}><ArrowLeft size={22} color={theme.text} weight="bold" /></Pressable>
+        <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}><ArrowLeft size={22} color={theme.text} weight="regular" /></Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Education</Text>
-        <Pressable onPress={openAdd} style={[styles.addBtn, { backgroundColor: theme.primaryLight }]}>
-          <Plus size={18} color={theme.primary} weight="bold" />
+        <Pressable onPress={openAdd} style={styles.addBtn} hitSlop={8}>
+          <Plus size={22} color={theme.primary} weight="regular" />
         </Pressable>
       </View>
 
@@ -53,8 +53,8 @@ export default function ProfileEducation() {
               <Text style={[styles.cardDate, { color: theme.textSecondary }]}>{item.startDate}{item.endDate ? ` — ${item.endDate}` : ''}</Text>
             </View>
             <View style={styles.cardActions}>
-              <Pressable onPress={() => openEdit(item)} style={[styles.iconBtn, { backgroundColor: theme.primaryLight }]}><PencilSimple size={15} color={theme.primary} weight="bold" /></Pressable>
-              <Pressable onPress={() => Alert.alert('Delete', `Remove "${item.degree}"?`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteM.mutate(item.id) }])} style={[styles.iconBtn, { backgroundColor: '#FFEBEE' }]}><Trash size={15} color={theme.error} weight="bold" /></Pressable>
+              <Pressable onPress={() => openEdit(item)} hitSlop={8}><PencilSimple size={18} color={theme.textSecondary} weight="regular" /></Pressable>
+              <Pressable onPress={() => Alert.alert('Delete', `Remove "${item.degree}"?`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteM.mutate(item.id) }])} hitSlop={8}><Trash size={18} color={theme.error} weight="regular" /></Pressable>
             </View>
           </View>
         )}
@@ -85,16 +85,15 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: Spacing.three, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   back: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 18, fontFamily: Fonts.bold },
-  addBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  addBtn: { padding: 4 },
   list: { padding: Spacing.three, gap: 10 },
   empty: { textAlign: 'center', fontSize: 15, fontFamily: Fonts.regular, paddingVertical: 40 },
-  card: { flexDirection: 'row', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 10 },
+  card: { flexDirection: 'row', alignItems: 'flex-start', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 12 },
   cardBody: { flex: 1, gap: 3 },
   cardTitle: { fontSize: 14, fontFamily: Fonts.semiBold },
   cardSub: { fontSize: 13, fontFamily: Fonts.regular },
   cardDate: { fontSize: 11, fontFamily: Fonts.regular, marginTop: 2 },
-  cardActions: { gap: 6 },
-  iconBtn: { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  cardActions: { flexDirection: 'row', gap: 16, paddingTop: 2 },
   modal: { flex: 1 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth },
   modalTitle: { fontSize: 17, fontFamily: Fonts.bold },

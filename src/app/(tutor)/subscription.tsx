@@ -57,7 +57,7 @@ export default function TutorSubscription() {
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <Pressable onPress={() => router.back()} style={styles.back}>
-          <ArrowLeft size={22} color={theme.text} weight="bold" />
+          <ArrowLeft size={22} color={theme.text} weight="regular" />
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Subscription</Text>
       </View>

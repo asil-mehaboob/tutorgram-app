@@ -43,7 +43,7 @@ export type DashboardCourse = {
 export type DashboardOverview = {
   stats: DashboardStats;
   transactions: DashboardTransaction[];
-  courses: DashboardCourse[];
+  courses?: DashboardCourse[];
 };
 
 export type TutorNotification = {
