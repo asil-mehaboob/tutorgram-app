@@ -1,0 +1,251 @@
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, CheckCircle, Crown } from 'phosphor-react-native';
+import { router } from 'expo-router';
+import { useTheme } from '@/hooks/use-theme';
+import { Fonts, Spacing } from '@/constants/theme';
+import { getUserPlan } from '@/lib/api/tutor-subscription';
+
+type BillingCycle = 'monthly' | 'yearly';
+
+const PLANS = [
+  {
+    key: 'STARTER',
+    name: 'Starter',
+    monthlyPrice: 2499,
+    yearlyPrice: 11999,
+    features: [
+      'Up to 5 courses',
+      'Basic analytics',
+      'Student messaging',
+      'Certificates',
+      'Standard support',
+    ],
+  },
+  {
+    key: 'PRO',
+    name: 'Pro',
+    monthlyPrice: 3499,
+    yearlyPrice: 26999,
+    features: [
+      'Unlimited courses',
+      'Advanced analytics',
+      'Student messaging',
+      'Certificates',
+      'AI course assistant',
+      'Priority support',
+      'Franchise eligibility',
+    ],
+    recommended: true,
+  },
+];
+
+export default function TutorSubscription() {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const [billing, setBilling] = useState<BillingCycle>('monthly');
+
+  const { data: plan, isLoading } = useQuery({
+    queryKey: ['tutor-plan'],
+    queryFn: getUserPlan,
+    staleTime: 5 * 60_000,
+  });
+
+  return (
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <Pressable onPress={() => router.back()} style={styles.back}>
+          <ArrowLeft size={22} color={theme.text} weight="bold" />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Subscription</Text>
+      </View>
+
+      {isLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.primary} size="large" />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Current plan banner */}
+          {plan?.isPaid && (
+            <View style={[styles.currentBanner, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
+              <Crown size={20} color={theme.primary} weight="fill" />
+              <Text style={[styles.currentText, { color: theme.primary }]}>
+                Active: {plan.planName} · {plan.billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}
+              </Text>
+            </View>
+          )}
+
+          {/* Billing toggle */}
+          <View style={[styles.billingToggle, { backgroundColor: theme.surfaceEl }]}>
+            <Pressable
+              onPress={() => setBilling('monthly')}
+              style={[styles.toggleBtn, billing === 'monthly' && { backgroundColor: theme.surface }]}
+            >
+              <Text style={[styles.toggleText, { color: billing === 'monthly' ? theme.text : theme.textSecondary }]}>
+                Monthly
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setBilling('yearly')}
+              style={[styles.toggleBtn, billing === 'yearly' && { backgroundColor: theme.surface }]}
+            >
+              <Text style={[styles.toggleText, { color: billing === 'yearly' ? theme.text : theme.textSecondary }]}>
+                Yearly
+              </Text>
+              <View style={[styles.saveBadge, { backgroundColor: '#E8F5E9' }]}>
+                <Text style={[styles.saveText, { color: '#1E6B1E' }]}>Save 40%</Text>
+              </View>
+            </Pressable>
+          </View>
+
+          {/* Plan cards */}
+          {PLANS.map((p) => {
+            const price = billing === 'monthly' ? p.monthlyPrice : p.yearlyPrice;
+            const isActive = plan?.isPaid && plan.planName?.toUpperCase() === p.name.toUpperCase();
+
+            return (
+              <View
+                key={p.key}
+                style={[
+                  styles.planCard,
+                  { backgroundColor: theme.surface, borderColor: p.recommended ? theme.primary : theme.border },
+                  p.recommended && styles.planCardRecommended,
+                ]}
+              >
+                {p.recommended && (
+                  <View style={[styles.recommendedBadge, { backgroundColor: theme.primary }]}>
+                    <Text style={styles.recommendedText}>Most Popular</Text>
+                  </View>
+                )}
+                <View style={styles.planHeader}>
+                  <Text style={[styles.planName, { color: theme.text }]}>{p.name}</Text>
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.price, { color: theme.text }]}>
+                      ₹{price.toLocaleString('en-IN')}
+                    </Text>
+                    <Text style={[styles.pricePer, { color: theme.textSecondary }]}>
+                      /{billing === 'monthly' ? 'mo' : 'yr'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.featureList}>
+                  {p.features.map((f) => (
+                    <View key={f} style={styles.featureRow}>
+                      <CheckCircle size={16} color={theme.primary} weight="fill" />
+                      <Text style={[styles.featureText, { color: theme.textSecondary }]}>{f}</Text>
+                    </View>
+                  ))}
+                </View>
+                {isActive ? (
+                  <View style={[styles.activeBtn, { backgroundColor: theme.surfaceEl }]}>
+                    <Text style={[styles.activeBtnText, { color: theme.textSecondary }]}>Current Plan</Text>
+                  </View>
+                ) : (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.subscribeBtn,
+                      { backgroundColor: p.recommended ? theme.primary : theme.surface, borderColor: theme.primary, opacity: pressed ? 0.85 : 1 },
+                    ]}
+                  >
+                    <Text style={[styles.subscribeBtnText, { color: p.recommended ? '#fff' : theme.primary }]}>
+                      {plan?.isPaid ? 'Switch Plan' : 'Get Started'}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            );
+          })}
+
+          <Text style={[styles.disclaimer, { color: theme.textSecondary }]}>
+            All plans include a 7-day free trial. Cancel anytime. Prices are in INR and include GST.
+          </Text>
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  back: { padding: 4 },
+  headerTitle: { fontSize: 18, fontFamily: Fonts.bold },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  scroll: { padding: Spacing.three, gap: 16 },
+  currentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  currentText: { fontSize: 14, fontFamily: Fonts.semiBold },
+  billingToggle: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  toggleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  toggleText: { fontSize: 14, fontFamily: Fonts.semiBold },
+  saveBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  saveText: { fontSize: 10, fontFamily: Fonts.bold },
+  planCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 20,
+    gap: 16,
+    overflow: 'hidden',
+  },
+  planCardRecommended: { borderWidth: 1.5 },
+  recommendedBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderBottomLeftRadius: 10,
+  },
+  recommendedText: { fontSize: 11, fontFamily: Fonts.bold, color: '#fff' },
+  planHeader: { gap: 4, marginTop: 8 },
+  planName: { fontSize: 20, fontFamily: Fonts.extraBold },
+  priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+  price: { fontSize: 30, fontFamily: Fonts.extraBold, letterSpacing: -1 },
+  pricePer: { fontSize: 14, fontFamily: Fonts.regular, paddingBottom: 4 },
+  featureList: { gap: 10 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  featureText: { fontSize: 14, fontFamily: Fonts.regular },
+  subscribeBtn: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  subscribeBtnText: { fontSize: 15, fontFamily: Fonts.bold },
+  activeBtn: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  activeBtnText: { fontSize: 15, fontFamily: Fonts.semiBold },
+  disclaimer: { fontSize: 12, fontFamily: Fonts.regular, textAlign: 'center', lineHeight: 18 },
+});

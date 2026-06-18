@@ -1,18 +1,23 @@
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircle } from 'phosphor-react-native';
+import { CheckCircle, ArrowLeft, GraduationCap, ChalkboardTeacher } from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { forgotPassword } from '@/lib/api/auth';
+import { tutorForgotPassword } from '@/lib/api/tutor-auth';
 
 export default function ForgotPasswordScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ role?: string }>();
+  const role = params.role === 'tutor' ? 'tutor' : 'student';
+  const isTutor = role === 'tutor';
+
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,7 +29,11 @@ export default function ForgotPasswordScreen() {
     setError('');
     setLoading(true);
     try {
-      await forgotPassword(email.trim().toLowerCase());
+      if (isTutor) {
+        await tutorForgotPassword(email.trim().toLowerCase());
+      } else {
+        await forgotPassword(email.trim().toLowerCase());
+      }
       setSent(true);
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong.');
@@ -37,9 +46,21 @@ export default function ForgotPasswordScreen() {
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <View style={[styles.container, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}>
-          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-            <Text style={[styles.backText, { color: theme.primary }]}>← Back</Text>
-          </Pressable>
+
+          {/* Role indicator bar */}
+          <View style={styles.roleBar}>
+            <Pressable onPress={() => router.replace(`/(auth)/login?role=${role}`)} hitSlop={12} style={styles.backBtn}>
+              <ArrowLeft size={20} color={theme.textSecondary} />
+            </Pressable>
+            <View style={[styles.roleChip, { backgroundColor: theme.primaryLight }]}>
+              {isTutor
+                ? <ChalkboardTeacher size={13} color={theme.primary} weight="fill" />
+                : <GraduationCap size={13} color={theme.primary} weight="fill" />}
+              <Text style={[styles.roleChipText, { color: theme.primary }]}>
+                {isTutor ? 'Tutor' : 'Student'}
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.logoRow}>
             <Image
@@ -82,9 +103,9 @@ export default function ForgotPasswordScreen() {
                 <Text style={{ color: theme.text, fontFamily: Fonts.semiBold }}>{email}</Text>
               </Text>
               <Button
-                label="Back to Log In"
+                label="Back to Sign In"
                 variant="outline"
-                onPress={() => router.replace('/(auth)/login')}
+                onPress={() => router.replace(`/(auth)/login?role=${role}`)}
                 style={styles.backLoginBtn}
               />
             </View>
@@ -104,8 +125,33 @@ const styles = StyleSheet.create({
     gap: 24,
     justifyContent: 'center',
   },
-  backBtn: { position: 'absolute', top: 20, left: 24 },
-  backText: { fontSize: 16, fontFamily: Fonts.semiBold },
+
+  roleBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    position: 'absolute',
+    top: 16,
+    left: 24,
+    right: 24,
+  },
+  backBtn: {
+    padding: 4,
+  },
+  roleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  roleChipText: {
+    fontSize: 12,
+    fontFamily: Fonts.semiBold,
+    letterSpacing: 0.1,
+  },
+
   logoRow: { alignItems: 'center' },
   logo: { width: 140, height: 38 },
   headingBlock: { gap: 6 },

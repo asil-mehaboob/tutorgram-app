@@ -10,15 +10,16 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eye, EyeSlash } from 'phosphor-react-native';
+import { Eye, EyeSlash, ArrowLeft, GraduationCap, ChalkboardTeacher } from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { login as apiLogin, loginWithGoogle, getMe } from '@/lib/api/auth';
+import { login as studentLogin, loginWithGoogle as studentLoginWithGoogle, getMe as studentGetMe } from '@/lib/api/auth';
+import { tutorLogin, tutorLoginWithGoogle, tutorGetMe } from '@/lib/api/tutor-auth';
 import { useAuth } from '@/lib/auth/context';
 import type { AuthUser } from '@/lib/auth/context';
 
@@ -28,6 +29,9 @@ export default function LoginScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
+  const params = useLocalSearchParams<{ role?: string }>();
+  const role = params.role === 'tutor' ? 'tutor' : 'student';
+  const isTutor = role === 'tutor';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,24 +46,50 @@ export default function LoginScreen() {
     else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email address';
     if (!password) e.password = 'Password is required';
     setErrors(e);
+    if (Object.keys(e).length) {
+      console.log('[Login] Validation failed', e);
+    }
     return Object.keys(e).length === 0;
   }
 
   async function handleLogin() {
     if (!validate()) return;
+    console.log('[Login] Sign in started', { email: email.trim().toLowerCase(), role });
     setLoading(true);
     try {
-      const sessionToken = await apiLogin(email.trim().toLowerCase(), password);
-      const me = await getMe();
-      const user: AuthUser = {
-        id: me.session.id,
-        email: me.session.email ?? email,
-        name: me.session.name ?? me.identity.fullName,
-        role: me.session.role,
-      };
+      let sessionToken: string;
+      let user: AuthUser;
+
+      if (isTutor) {
+        sessionToken = await tutorLogin(email.trim().toLowerCase(), password);
+        console.log('[Login] Tutor session token received');
+        const me = await tutorGetMe(sessionToken);
+        console.log('[Login] Tutor profile fetched', { id: me.session.id, role: me.session.role });
+        user = {
+          id: me.session.id,
+          email: me.session.email ?? email,
+          name: me.session.name ?? me.identity.fullName,
+          role: me.session.role,
+        };
+      } else {
+        sessionToken = await studentLogin(email.trim().toLowerCase(), password);
+        console.log('[Login] Student session token received');
+        const me = await studentGetMe();
+        console.log('[Login] Student profile fetched', { id: me.session.id, role: me.session.role });
+        user = {
+          id: me.session.id,
+          email: me.session.email ?? email,
+          name: me.session.name ?? me.identity.fullName,
+          role: me.session.role,
+        };
+      }
+
       await login(sessionToken, user);
-      router.replace('/(student)');
+      console.log('[Login] Sign in complete, navigating to home');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      router.replace((isTutor ? '/(tutor)' : '/(student)') as any);
     } catch (err: unknown) {
+      console.error('[Login] Sign in error', err instanceof Error ? err.message : err);
       Alert.alert('Sign in failed', err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setLoading(false);
@@ -67,23 +97,47 @@ export default function LoginScreen() {
   }
 
   async function handleGoogleLogin() {
+    console.log('[Login] Google sign in started', { role });
     setGoogleLoading(true);
     try {
-      const sessionToken = await loginWithGoogle(async (url, redirectUrl) => {
-        const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
-        return result;
-      });
-      const me = await getMe();
-      const user: AuthUser = {
-        id: me.session.id,
-        email: me.session.email ?? '',
-        name: me.session.name ?? me.identity.fullName,
-        role: me.session.role,
+      const openSession = async (url: string, redirectUrl: string) => {
+        return WebBrowser.openAuthSessionAsync(url, redirectUrl);
       };
+
+      let sessionToken: string;
+      let user: AuthUser;
+
+      if (isTutor) {
+        sessionToken = await tutorLoginWithGoogle(openSession);
+        console.log('[Login] Tutor Google OAuth token received');
+        const me = await tutorGetMe(sessionToken);
+        console.log('[Login] Tutor profile fetched', { id: me.session.id, role: me.session.role });
+        user = {
+          id: me.session.id,
+          email: me.session.email ?? '',
+          name: me.session.name ?? me.identity.fullName,
+          role: me.session.role,
+        };
+      } else {
+        sessionToken = await studentLoginWithGoogle(openSession);
+        console.log('[Login] Student Google OAuth token received');
+        const me = await studentGetMe();
+        console.log('[Login] Student profile fetched', { id: me.session.id, role: me.session.role });
+        user = {
+          id: me.session.id,
+          email: me.session.email ?? '',
+          name: me.session.name ?? me.identity.fullName,
+          role: me.session.role,
+        };
+      }
+
       await login(sessionToken, user);
-      router.replace('/(student)');
+      console.log('[Login] Google sign in complete, navigating to home');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      router.replace((isTutor ? '/(tutor)' : '/(student)') as any);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
+      console.error('[Login] Google sign in error', msg);
       if (!msg.includes('cancelled')) Alert.alert('Error', msg);
     } finally {
       setGoogleLoading(false);
@@ -94,10 +148,25 @@ export default function LoginScreen() {
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }]}
+          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Role indicator bar */}
+          <View style={styles.roleBar}>
+            <Pressable onPress={() => router.replace('/(auth)/role-select')} hitSlop={12} style={styles.backBtn}>
+              <ArrowLeft size={20} color={theme.textSecondary} />
+            </Pressable>
+            <View style={[styles.roleChip, { backgroundColor: theme.primaryLight }]}>
+              {isTutor
+                ? <ChalkboardTeacher size={13} color={theme.primary} weight="fill" />
+                : <GraduationCap size={13} color={theme.primary} weight="fill" />}
+              <Text style={[styles.roleChipText, { color: theme.primary }]}>
+                {isTutor ? 'Tutor' : 'Student'}
+              </Text>
+            </View>
+          </View>
+
           {/* Logo */}
           <View style={styles.logoSection}>
             <Image
@@ -109,9 +178,13 @@ export default function LoginScreen() {
 
           {/* Heading */}
           <View style={styles.headingSection}>
-            <Text style={[styles.heading, { color: theme.text }]}>Log in to your account</Text>
+            <Text style={[styles.heading, { color: theme.text }]}>
+              {isTutor ? 'Welcome back, Tutor' : 'Welcome back'}
+            </Text>
             <Text style={[styles.subheading, { color: theme.textSecondary }]}>
-              Welcome back! Access thousands of courses.
+              {isTutor
+                ? 'Sign in to your tutor dashboard'
+                : 'Sign in to continue learning'}
             </Text>
           </View>
 
@@ -120,7 +193,7 @@ export default function LoginScreen() {
             onPress={handleGoogleLogin}
             disabled={googleLoading || loading}
             style={({ pressed }) => [
-              styles.googleBtn,
+              styles.ssoBtn,
               {
                 backgroundColor: theme.surface,
                 borderColor: theme.border,
@@ -130,10 +203,10 @@ export default function LoginScreen() {
           >
             <Image
               source={require('@/assets/images/favicon.svg')}
-              style={styles.googleIcon}
+              style={styles.ssoIcon}
               contentFit="contain"
             />
-            <Text style={[styles.googleBtnText, { color: theme.text }]}>
+            <Text style={[styles.ssoBtnText, { color: theme.text }]}>
               {googleLoading ? 'Redirecting…' : 'Continue with Google'}
             </Text>
           </Pressable>
@@ -179,14 +252,14 @@ export default function LoginScreen() {
             </View>
 
             <Pressable
-              onPress={() => router.push('/(auth)/forgot-password')}
+              onPress={() => router.push(`/(auth)/forgot-password?role=${role}`)}
               style={styles.forgotRow}
               hitSlop={8}
             >
               <Text style={[styles.forgotText, { color: theme.primary }]}>Forgot password?</Text>
             </Pressable>
 
-            <Button label="Log In" onPress={handleLogin} loading={loading} disabled={googleLoading} />
+            <Button label="Sign In" onPress={handleLogin} loading={loading} disabled={googleLoading} />
           </View>
 
           {/* Sign up */}
@@ -194,7 +267,7 @@ export default function LoginScreen() {
             <Text style={[styles.footerText, { color: theme.textSecondary }]}>
               Don't have an account?{' '}
             </Text>
-            <Pressable onPress={() => router.push('/(auth)/signup')} hitSlop={8}>
+            <Pressable onPress={() => router.push(`/(auth)/signup?role=${role}`)} hitSlop={8}>
               <Text style={[styles.footerLink, { color: theme.primary }]}>Sign up for free</Text>
             </Pressable>
           </View>
@@ -219,7 +292,28 @@ const styles = StyleSheet.create({
     gap: 24,
   },
 
-  /* Logo */
+  roleBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    padding: 4,
+  },
+  roleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  roleChipText: {
+    fontSize: 12,
+    fontFamily: Fonts.semiBold,
+    letterSpacing: 0.1,
+  },
+
   logoSection: {
     alignItems: 'center',
   },
@@ -228,7 +322,6 @@ const styles = StyleSheet.create({
     height: 44,
   },
 
-  /* Heading */
   headingSection: {
     alignItems: 'center',
     gap: 6,
@@ -246,8 +339,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  /* Google */
-  googleBtn: {
+  ssoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -256,16 +348,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 10,
   },
-  googleIcon: {
+  ssoIcon: {
     width: 20,
     height: 20,
   },
-  googleBtnText: {
+  ssoBtnText: {
     fontSize: 15,
     fontFamily: Fonts.semiBold,
+    letterSpacing: -0.1,
   },
 
-  /* Divider */
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -280,7 +372,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
   },
 
-  /* Form */
   form: { gap: 16 },
   eyeBtn: {
     position: 'absolute',
@@ -296,7 +387,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semiBold,
   },
 
-  /* Footer */
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -312,7 +402,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
   },
 
-  /* Legal */
   legal: {
     fontSize: 11,
     fontFamily: Fonts.regular,

@@ -16,8 +16,12 @@ export default function RootIndex() {
   }
 
   if (state.status === 'authenticated') {
+    if (state.user.role === 'TUTOR') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <Redirect href={'/(tutor)' as any} />;
+    }
     return <Redirect href="/(student)" />;
   }
 
-  return <Redirect href="/(auth)/login" />;
+  return <Redirect href="/(auth)/role-select" />;
 }

@@ -10,28 +10,35 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eye, EyeSlash, Check } from 'phosphor-react-native';
+import {
+  Eye, EyeSlash, Check, ArrowLeft,
+  GraduationCap, ChalkboardTeacher,
+  CheckSquare, Square,
+} from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { sendOtp, verifyOtp, register, loginWithGoogle, getMe } from '@/lib/api/auth';
+import { sendOtp, verifyOtp, register, loginWithGoogle as studentLoginWithGoogle, getMe as studentGetMe } from '@/lib/api/auth';
+import { tutorSendOtp, tutorVerifyOtp, tutorRegister, tutorLoginWithGoogle, tutorGetMe } from '@/lib/api/tutor-auth';
 import { useAuth } from '@/lib/auth/context';
 import type { AuthUser } from '@/lib/auth/context';
 
 WebBrowser.maybeCompleteAuthSession();
 
 type Step = 'phone' | 'otp' | 'details';
-
 const STEPS = ['Phone', 'Verify', 'Details'];
 
 export default function SignupScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
+  const params = useLocalSearchParams<{ role?: string }>();
+  const role = params.role === 'tutor' ? 'tutor' : 'student';
+  const isTutor = role === 'tutor';
 
   const [step, setStep] = useState<Step>('phone');
   const [loading, setLoading] = useState(false);
@@ -44,28 +51,53 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [applyForBrand, setApplyForBrand] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const stepIndex = step === 'phone' ? 0 : step === 'otp' ? 1 : 2;
 
   async function handleGoogleSignup() {
+    console.log('[Signup] Google signup started', { role });
     setGoogleLoading(true);
     try {
-      const sessionToken = await loginWithGoogle(async (url, redirectUrl) => {
-        const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
-        return result;
-      });
-      const me = await getMe();
-      const user: AuthUser = {
-        id: me.session.id,
-        email: me.session.email ?? '',
-        name: me.session.name ?? me.identity.fullName,
-        role: me.session.role,
+      const openSession = async (url: string, redirectUrl: string) => {
+        return WebBrowser.openAuthSessionAsync(url, redirectUrl);
       };
+
+      let sessionToken: string;
+      let user: AuthUser;
+
+      if (isTutor) {
+        sessionToken = await tutorLoginWithGoogle(openSession);
+        console.log('[Signup] Tutor Google OAuth token received');
+        const me = await tutorGetMe(sessionToken);
+        console.log('[Signup] Tutor profile fetched', { id: me.session.id, role: me.session.role });
+        user = {
+          id: me.session.id,
+          email: me.session.email ?? '',
+          name: me.session.name ?? me.identity.fullName,
+          role: me.session.role,
+        };
+      } else {
+        sessionToken = await studentLoginWithGoogle(openSession);
+        console.log('[Signup] Student Google OAuth token received');
+        const me = await studentGetMe();
+        console.log('[Signup] Student profile fetched', { id: me.session.id, role: me.session.role });
+        user = {
+          id: me.session.id,
+          email: me.session.email ?? '',
+          name: me.session.name ?? me.identity.fullName,
+          role: me.session.role,
+        };
+      }
+
       await login(sessionToken, user);
-      router.replace('/(student)');
+      console.log('[Signup] Google signup complete, navigating to home');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      router.replace((isTutor ? '/(tutor)' : '/(student)') as any);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
+      console.error('[Signup] Google signup error', msg);
       if (!msg.includes('cancelled')) Alert.alert('Error', msg);
     } finally {
       setGoogleLoading(false);
@@ -78,13 +110,23 @@ export default function SignupScreen() {
     else if (!/^\+[1-9]\d{7,14}$/.test(phone.trim()))
       e.phone = 'Use international format, e.g. +919876543210';
     setErrors(e);
-    if (Object.keys(e).length) return;
+    if (Object.keys(e).length) {
+      console.log('[Signup] Send OTP validation failed', e);
+      return;
+    }
 
+    console.log('[Signup] Sending OTP', { phone: phone.trim(), role });
     setLoading(true);
     try {
-      await sendOtp(phone.trim());
+      if (isTutor) {
+        await tutorSendOtp(phone.trim());
+      } else {
+        await sendOtp(phone.trim());
+      }
+      console.log('[Signup] OTP sent successfully');
       setStep('otp');
     } catch (err: unknown) {
+      console.error('[Signup] Send OTP error', err instanceof Error ? err.message : err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to send OTP.');
     } finally {
       setLoading(false);
@@ -96,14 +138,22 @@ export default function SignupScreen() {
     if (!otp.trim()) e.otp = 'Enter the 6-digit code';
     else if (!/^\d{6}$/.test(otp.trim())) e.otp = 'OTP must be exactly 6 digits';
     setErrors(e);
-    if (Object.keys(e).length) return;
+    if (Object.keys(e).length) {
+      console.log('[Signup] Verify OTP validation failed', e);
+      return;
+    }
 
+    console.log('[Signup] Verifying OTP', { phone: phone.trim(), role });
     setLoading(true);
     try {
-      const tokenId = await verifyOtp(phone.trim(), otp.trim());
+      const tokenId = isTutor
+        ? await tutorVerifyOtp(phone.trim(), otp.trim())
+        : await verifyOtp(phone.trim(), otp.trim());
+      console.log('[Signup] OTP verified, tokenId received');
       setVerifiedTokenId(tokenId);
       setStep('details');
     } catch (err: unknown) {
+      console.error('[Signup] Verify OTP error', err instanceof Error ? err.message : err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Invalid OTP.');
     } finally {
       setLoading(false);
@@ -121,21 +171,44 @@ export default function SignupScreen() {
     else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password))
       e.password = 'Include uppercase, lowercase, and a number';
     setErrors(e);
-    if (Object.keys(e).length) return;
+    if (Object.keys(e).length) {
+      console.log('[Signup] Register validation failed', e);
+      return;
+    }
 
+    console.log('[Signup] Registering account', {
+      role,
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      ...(isTutor && { applyForBrand }),
+    });
     setLoading(true);
     try {
-      await register({
+      const payload = {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
         phoneNumber: phone.trim(),
         verifiedTokenId,
-      });
-      Alert.alert('Account created!', 'Sign in to start learning.', [
-        { text: 'Sign In', onPress: () => router.replace('/(auth)/login') },
-      ]);
+      };
+
+      if (isTutor) {
+        await tutorRegister({ ...payload, applyForBrand });
+      } else {
+        await register(payload);
+      }
+
+      console.log('[Signup] Account created successfully', { role });
+      Alert.alert(
+        'Account created!',
+        isTutor
+          ? 'Your tutor account is ready. Sign in to get started.'
+          : 'Sign in to start learning.',
+        [{ text: 'Sign In', onPress: () => router.replace(`/(auth)/login?role=${role}`) }]
+      );
     } catch (err: unknown) {
+      console.error('[Signup] Register error', err instanceof Error ? err.message : err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Registration failed.');
     } finally {
       setLoading(false);
@@ -146,10 +219,25 @@ export default function SignupScreen() {
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 32 }]}
+          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Role indicator bar */}
+          <View style={styles.roleBar}>
+            <Pressable onPress={() => router.replace(`/(auth)/login?role=${role}`)} hitSlop={12} style={styles.backBtn}>
+              <ArrowLeft size={20} color={theme.textSecondary} />
+            </Pressable>
+            <View style={[styles.roleChip, { backgroundColor: theme.primaryLight }]}>
+              {isTutor
+                ? <ChalkboardTeacher size={13} color={theme.primary} weight="fill" />
+                : <GraduationCap size={13} color={theme.primary} weight="fill" />}
+              <Text style={[styles.roleChipText, { color: theme.primary }]}>
+                {isTutor ? 'Tutor' : 'Student'}
+              </Text>
+            </View>
+          </View>
+
           {/* Logo */}
           <View style={styles.logoRow}>
             <Image
@@ -322,6 +410,27 @@ export default function SignupScreen() {
                     : <Eye size={18} color={theme.textSecondary} />}
                 </Pressable>
               </View>
+
+              {/* Tutor-only: Apply for Brand */}
+              {isTutor && (
+                <Pressable
+                  onPress={() => setApplyForBrand((v) => !v)}
+                  style={[styles.brandRow, { backgroundColor: theme.surfaceEl, borderColor: applyForBrand ? theme.primary : theme.border }]}
+                >
+                  <View style={styles.brandRowContent}>
+                    <Text style={[styles.brandRowTitle, { color: theme.text }]}>
+                      Apply for Brand Status
+                    </Text>
+                    <Text style={[styles.brandRowDesc, { color: theme.textSecondary }]}>
+                      Verified brands get a badge and priority search placement.
+                    </Text>
+                  </View>
+                  {applyForBrand
+                    ? <CheckSquare size={22} color={theme.primary} weight="fill" />
+                    : <Square size={22} color={theme.border} />}
+                </Pressable>
+              )}
+
               <Button label="Create Account" onPress={handleRegister} loading={loading} />
             </View>
           )}
@@ -331,7 +440,7 @@ export default function SignupScreen() {
             <Text style={[styles.footerText, { color: theme.textSecondary }]}>
               Already have an account?{' '}
             </Text>
-            <Pressable onPress={() => router.push('/(auth)/login')} hitSlop={8}>
+            <Pressable onPress={() => router.push(`/(auth)/login?role=${role}`)} hitSlop={8}>
               <Text style={[styles.footerLink, { color: theme.primary }]}>Log in</Text>
             </Pressable>
           </View>
@@ -348,6 +457,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 24,
   },
+
+  roleBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    padding: 4,
+  },
+  roleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  roleChipText: {
+    fontSize: 12,
+    fontFamily: Fonts.semiBold,
+    letterSpacing: 0.1,
+  },
+
   logoRow: { alignItems: 'center' },
   logo: { width: 160, height: 44 },
   heading: {
@@ -356,6 +488,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     textAlign: 'center',
   },
+
   steps: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -388,6 +521,7 @@ const styles = StyleSheet.create({
     height: 1.5,
     marginHorizontal: 4,
   },
+
   googleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -413,6 +547,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Fonts.regular,
   },
+
   form: { gap: 16 },
   stepHint: {
     fontSize: 14,
@@ -424,10 +559,29 @@ const styles = StyleSheet.create({
     right: 14,
     top: 38,
   },
-  showPasswordText: {
-    fontSize: 13,
+
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  brandRowContent: {
+    flex: 1,
+    gap: 3,
+  },
+  brandRowTitle: {
+    fontSize: 14,
     fontFamily: Fonts.semiBold,
   },
+  brandRowDesc: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    lineHeight: 17,
+  },
+
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
