@@ -104,6 +104,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     flexDirection: 'row',
+    height: 110,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
   },
   thumbContainer: {
     position: 'relative',
-    width: 120,
+    width: 110,
     flexShrink: 0,
   },
   thumb: {
@@ -132,8 +133,9 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
-    padding: 14,
-    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 3,
     justifyContent: 'center',
   },
   title: {
@@ -173,7 +175,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 4,
     borderRadius: 6,
   },
   continueBtnText: {
