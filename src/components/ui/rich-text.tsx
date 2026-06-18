@@ -12,7 +12,7 @@ function decode(s: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ');
+    .replace(/&nbsp;/g, ' ');
 }
 
 // ─── tokenizer ────────────────────────────────────────────────────────────────
@@ -68,6 +68,7 @@ function renderInline(
   style: InlineStyle,
   color: string,
   linkColor: string,
+  codeBg: string,
 ): { nodes: React.ReactNode[]; pos: number } {
   const nodes: React.ReactNode[] = [];
   let i = pos;
@@ -77,9 +78,9 @@ function renderInline(
 
     if (tok.t === 'text') {
       const text = tok.value;
-      if (text.trim() || text.includes(' ')) {
+      if (text.trim() || text.includes(' ')) {
         nodes.push(
-          <Text key={i} style={inlineStyle(style, color)}>
+          <Text key={i} style={inlineStyle(style, color, codeBg)}>
             {text}
           </Text>,
         );
@@ -112,23 +113,23 @@ function renderInline(
     else if (tok.tag === 'em' || tok.tag === 'i') childStyle = { ...style, italic: true };
     else if (tok.tag === 'code') childStyle = { ...style, code: true };
     else if (tok.tag === 'a') {
-      const { nodes: inner, pos: next } = renderInline(tokens, i + 1, tok.tag, childStyle, linkColor, linkColor);
+      const { nodes: inner, pos: next } = renderInline(tokens, i + 1, tok.tag, childStyle, linkColor, linkColor, codeBg);
       nodes.push(<Text key={i} style={{ color: linkColor }}>{inner}</Text>);
       i = next;
       continue;
     }
 
-    const { nodes: inner, pos: next } = renderInline(tokens, i + 1, tok.tag, childStyle, color, linkColor);
-    nodes.push(<Text key={i} style={inlineStyle(childStyle, color)}>{inner}</Text>);
+    const { nodes: inner, pos: next } = renderInline(tokens, i + 1, tok.tag, childStyle, color, linkColor, codeBg);
+    nodes.push(<Text key={i} style={inlineStyle(childStyle, color, codeBg)}>{inner}</Text>);
     i = next;
   }
 
   return { nodes, pos: i };
 }
 
-function inlineStyle(s: InlineStyle, color: string): object {
+function inlineStyle(s: InlineStyle, color: string, codeBg: string): object {
   if (s.code) {
-    return { fontFamily: 'monospace', backgroundColor: '#F0F2F5', fontSize: 12, borderRadius: 3, color };
+    return { fontFamily: 'monospace', backgroundColor: codeBg, fontSize: 12, borderRadius: 3, color };
   }
   return {
     fontFamily: s.bold ? Fonts.bold : Fonts.regular,
@@ -159,7 +160,7 @@ export function RichText({ html }: RichTextProps) {
 
     // ── headings ──────────────────────────────────────────────────────────────
     if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
-      const { nodes, pos } = renderInline(tokens, i + 1, tag, {}, theme.text, theme.primary);
+      const { nodes, pos } = renderInline(tokens, i + 1, tag, {}, theme.text, theme.primary, theme.surfaceEl);
       blocks.push(
         <Text key={i} style={[styles.heading, headingStyle(tag), { color: theme.text }]}>
           {nodes}
@@ -172,11 +173,11 @@ export function RichText({ html }: RichTextProps) {
 
     // ── paragraph ─────────────────────────────────────────────────────────────
     if (tag === 'p') {
-      const { nodes, pos } = renderInline(tokens, i + 1, 'p', {}, '#3A3A3A', theme.primary);
+      const { nodes, pos } = renderInline(tokens, i + 1, 'p', {}, theme.text, theme.primary, theme.surfaceEl);
       const content = nodes.filter((n) => n !== null && n !== undefined);
       if (content.length > 0) {
         blocks.push(
-          <Text key={i} style={styles.paragraph}>
+          <Text key={i} style={[styles.paragraph, { color: theme.text }]}>
             {content}
           </Text>,
         );
@@ -204,11 +205,11 @@ export function RichText({ html }: RichTextProps) {
             const liTok = tokens[i];
             if (liTok.t === 'close' && liTok.tag === 'li') { i++; break; }
             if (liTok.t === 'open' && liTok.tag === 'p') {
-              const { nodes, pos } = renderInline(tokens, i + 1, 'p', {}, '#3A3A3A', theme.primary);
+              const { nodes, pos } = renderInline(tokens, i + 1, 'p', {}, theme.text, theme.primary, theme.surfaceEl);
               allNodes.push(...nodes);
               i = pos;
             } else if (liTok.t === 'text' || liTok.t === 'br' || liTok.t === 'open') {
-              const { nodes, pos } = renderInline(tokens, i, 'li', {}, '#3A3A3A', theme.primary);
+              const { nodes, pos } = renderInline(tokens, i, 'li', {}, theme.text, theme.primary, theme.surfaceEl);
               allNodes.push(...nodes);
               i = pos;
               break;
@@ -219,8 +220,8 @@ export function RichText({ html }: RichTextProps) {
           const bullet = ordered ? `${itemNum}.` : '•';
           blocks.push(
             <View key={liKey} style={styles.listRow}>
-              <Text style={[styles.bullet, { color: '#555' }]}>{bullet}</Text>
-              <Text style={styles.listText}>{allNodes}</Text>
+              <Text style={[styles.bullet, { color: theme.textSecondary }]}>{bullet}</Text>
+              <Text style={[styles.listText, { color: theme.text }]}>{allNodes}</Text>
             </View>,
           );
           itemNum++;
@@ -234,10 +235,10 @@ export function RichText({ html }: RichTextProps) {
 
     // ── blockquote ────────────────────────────────────────────────────────────
     if (tag === 'blockquote') {
-      const { nodes, pos } = renderInline(tokens, i + 1, 'blockquote', { italic: true }, '#666', theme.primary);
+      const { nodes, pos } = renderInline(tokens, i + 1, 'blockquote', { italic: true }, theme.textSecondary, theme.primary, theme.surfaceEl);
       blocks.push(
-        <View key={i} style={styles.blockquote}>
-          <Text style={styles.blockquoteText}>{nodes}</Text>
+        <View key={i} style={[styles.blockquote, { borderLeftColor: theme.border }]}>
+          <Text style={[styles.blockquoteText, { color: theme.textSecondary }]}>{nodes}</Text>
         </View>,
       );
       i = pos;
@@ -267,7 +268,6 @@ const styles = StyleSheet.create({
   paragraph: {
     fontFamily: Fonts.regular,
     fontSize: 14,
-    color: '#3A3A3A',
     lineHeight: 22,
   },
 
@@ -291,20 +291,17 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: Fonts.regular,
     fontSize: 14,
-    color: '#3A3A3A',
     lineHeight: 22,
   },
 
   blockquote: {
     borderLeftWidth: 3,
-    borderLeftColor: '#D1D7DC',
     paddingLeft: 12,
     marginVertical: 2,
   },
   blockquoteText: {
     fontFamily: Fonts.regular,
     fontSize: 14,
-    color: '#666',
     fontStyle: 'italic',
     lineHeight: 22,
   },

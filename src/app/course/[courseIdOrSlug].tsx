@@ -116,7 +116,14 @@ function ReviewCard({
       : review.comment!.slice(0, TRUNCATE).trimEnd() + '…';
 
   return (
-    <View style={[styles.reviewCard, showBorder && styles.reviewCardBorder]}>
+    <View
+      style={[
+        styles.reviewCard,
+        { backgroundColor: theme.surface },
+        showBorder && styles.reviewCardBorder,
+        showBorder && { borderBottomColor: theme.border },
+      ]}
+    >
       <View style={styles.reviewHeader}>
         {review.studentProfilePicture ? (
           <Image
@@ -130,7 +137,7 @@ function ReviewCard({
           </View>
         )}
         <View style={{ flex: 1 }}>
-          <Text style={styles.reviewName} numberOfLines={1}>{name}</Text>
+          <Text style={[styles.reviewName, { color: theme.text }]} numberOfLines={1}>{name}</Text>
           <View style={styles.reviewMeta}>
             <View style={styles.reviewStars}>
               {Array.from({ length: 5 }).map((_, i) => (
@@ -142,16 +149,16 @@ function ReviewCard({
                 />
               ))}
             </View>
-            <Text style={styles.reviewDate}>{formatReviewDate(review.createdAt)}</Text>
+            <Text style={[styles.reviewDate, { color: theme.textSecondary }]}>{formatReviewDate(review.createdAt)}</Text>
           </View>
         </View>
       </View>
       {!!review.title && (
-        <Text style={styles.reviewTitle}>{review.title}</Text>
+        <Text style={[styles.reviewTitle, { color: theme.text }]}>{review.title}</Text>
       )}
       {!!review.comment && (
         <Pressable onPress={() => isTruncatable && setExpanded((p) => !p)}>
-          <Text style={styles.reviewComment}>{displayedComment}</Text>
+          <Text style={[styles.reviewComment, { color: theme.textSecondary }]}>{displayedComment}</Text>
           {isTruncatable && (
             <Text style={[styles.reviewReadToggle, { color: theme.primary }]}>
               {expanded ? 'Show less' : 'Read more'}
@@ -355,7 +362,7 @@ export default function CourseDetailScreen() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110 }}
@@ -502,17 +509,17 @@ export default function CourseDetailScreen() {
           )}
         </View>
 
-        {/* ── WHITE BODY ────────────────────────────────────────────────── */}
-        <View style={styles.body}>
+        {/* ── BODY ──────────────────────────────────────────────────────── */}
+        <View style={[styles.body, { backgroundColor: theme.background }]}>
 
           {/* About this course */}
           {!!course.detailedDescription && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>About this course</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>About this course</Text>
                 <RichText html={course.detailedDescription} />
               </View>
-              <View style={styles.sep} />
+              <View style={[styles.sep, { backgroundColor: theme.surfaceEl }]} />
             </>
           )}
 
@@ -520,10 +527,10 @@ export default function CourseDetailScreen() {
           {!!learnHtml && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>What you'll learn</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>What you'll learn</Text>
                 <RichText html={learnHtml} />
               </View>
-              <View style={styles.sep} />
+              <View style={[styles.sep, { backgroundColor: theme.surfaceEl }]} />
             </>
           )}
 
@@ -531,17 +538,17 @@ export default function CourseDetailScreen() {
           {outcomeItems.length > 0 && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Skills you'll gain</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Skills you'll gain</Text>
                 <View style={styles.pillsWrap}>
                   {outcomeItems.map((tag, i) => (
-                    <View key={i} style={styles.skillPill}>
-                      <Tag size={12} color="#444" weight="regular" />
-                      <Text style={styles.skillText}>{tag}</Text>
+                    <View key={i} style={[styles.skillPill, { backgroundColor: theme.surfaceEl }]}>
+                      <Tag size={12} color={theme.textSecondary} weight="regular" />
+                      <Text style={[styles.skillText, { color: theme.text }]}>{tag}</Text>
                     </View>
                   ))}
                 </View>
               </View>
-              <View style={styles.sep} />
+              <View style={[styles.sep, { backgroundColor: theme.surfaceEl }]} />
             </>
           )}
 
@@ -549,55 +556,55 @@ export default function CourseDetailScreen() {
           {!!whoIsForHtml && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Who this course is for</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Who this course is for</Text>
                 <RichText html={whoIsForHtml} />
               </View>
-              <View style={styles.sep} />
+              <View style={[styles.sep, { backgroundColor: theme.surfaceEl }]} />
             </>
           )}
 
           {/* This course includes */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>This course includes</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>This course includes</Text>
             <View style={styles.includesList}>
               {course.totalDuration > 0 && (
                 <View style={styles.includesRow}>
-                  <Clock size={18} color="#666" weight="regular" />
-                  <Text style={styles.includesText}>
+                  <Clock size={18} color={theme.textSecondary} weight="regular" />
+                  <Text style={[styles.includesText, { color: theme.text }]}>
                     {formatDuration(course.totalDuration)} of on-demand content
                   </Text>
                 </View>
               )}
               {course.totalLessons > 0 && (
                 <View style={styles.includesRow}>
-                  <PlayCircle size={18} color="#666" weight="regular" />
-                  <Text style={styles.includesText}>
+                  <PlayCircle size={18} color={theme.textSecondary} weight="regular" />
+                  <Text style={[styles.includesText, { color: theme.text }]}>
                     {course.totalLessons} lesson{course.totalLessons !== 1 ? 's' : ''} across{' '}
                     {course.totalSections} section{course.totalSections !== 1 ? 's' : ''}
                   </Text>
                 </View>
               )}
               <View style={styles.includesRow}>
-                <DeviceMobile size={18} color="#666" weight="regular" />
-                <Text style={styles.includesText}>Access on mobile</Text>
+                <DeviceMobile size={18} color={theme.textSecondary} weight="regular" />
+                <Text style={[styles.includesText, { color: theme.text }]}>Access on mobile</Text>
               </View>
               <View style={styles.includesRow}>
-                <Certificate size={18} color="#666" weight="regular" />
-                <Text style={styles.includesText}>Certificate of completion</Text>
+                <Certificate size={18} color={theme.textSecondary} weight="regular" />
+                <Text style={[styles.includesText, { color: theme.text }]}>Certificate of completion</Text>
               </View>
             </View>
           </View>
 
-          <View style={styles.sep} />
+          <View style={[styles.sep, { backgroundColor: theme.surfaceEl }]} />
 
           {/* Requirements */}
           {!!requirementsHtml && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Requirements</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Requirements</Text>
                 <RichText html={requirementsHtml} />
               </View>
-              <View style={styles.sep} />
+              <View style={[styles.sep, { backgroundColor: theme.surfaceEl }]} />
             </>
           )}
 
@@ -605,14 +612,14 @@ export default function CourseDetailScreen() {
           {course.sections.length > 0 && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Course content</Text>
-                <Text style={styles.contentMeta}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Course content</Text>
+                <Text style={[styles.contentMeta, { color: theme.textSecondary }]}>
                   {course.totalSections} section{course.totalSections !== 1 ? 's' : ''} •{' '}
                   {course.totalLessons} lesson{course.totalLessons !== 1 ? 's' : ''} •{' '}
                   {formatDuration(course.totalDuration)} total
                 </Text>
 
-                <View style={styles.accordion}>
+                <View style={[styles.accordion, { borderColor: theme.border }]}>
                   {course.sections.map((section: CourseSection, sIdx: number) => {
                     const isOpen = !!expandedSections[section.id];
                     const sectionDur = section.lessons.reduce(
@@ -625,49 +632,52 @@ export default function CourseDetailScreen() {
                         style={[
                           styles.accordionSection,
                           sIdx < course.sections.length - 1 && styles.accordionSectionBorder,
+                          sIdx < course.sections.length - 1 && { borderBottomColor: theme.border },
                         ]}
                       >
                         <Pressable
                           onPress={() => toggleSection(section.id)}
                           style={({ pressed }) => [
                             styles.accordionHeader,
-                            pressed && { backgroundColor: '#F5F5F5' },
+                            { backgroundColor: theme.surface },
+                            pressed && { backgroundColor: theme.surfaceEl },
                           ]}
                         >
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.accordionHeaderTitle} numberOfLines={2}>
+                            <Text style={[styles.accordionHeaderTitle, { color: theme.text }]} numberOfLines={2}>
                               {section.title}
                             </Text>
                             {!!section.description && (
                               <RichText html={section.description} />
                             )}
-                            <Text style={styles.accordionHeaderMeta}>
+                            <Text style={[styles.accordionHeaderMeta, { color: theme.textSecondary }]}>
                               {section.lessons.length} lesson
                               {section.lessons.length !== 1 ? 's' : ''}
                               {sectionDur > 0 ? ` • ${formatDuration(sectionDur)}` : ''}
                             </Text>
                           </View>
                           {isOpen
-                            ? <CaretUp size={16} color="#666" weight="bold" />
-                            : <CaretDown size={16} color="#666" weight="bold" />
+                            ? <CaretUp size={16} color={theme.textSecondary} weight="bold" />
+                            : <CaretDown size={16} color={theme.textSecondary} weight="bold" />
                           }
                         </Pressable>
 
                         {isOpen && (
-                          <View style={styles.lessonList}>
+                          <View style={[styles.lessonList, { backgroundColor: theme.surfaceEl, borderTopColor: theme.border }]}>
                             {section.lessons.map((lesson: CourseLesson, lIdx: number) => (
                               <View
                                 key={lesson.id}
                                 style={[
                                   styles.lessonItem,
                                   lIdx < section.lessons.length - 1 && styles.lessonItemBorder,
+                                  lIdx < section.lessons.length - 1 && { borderBottomColor: theme.border },
                                 ]}
                               >
                                 <View style={styles.lessonItemIcon}>
-                                  {getLessonIcon(lesson.type, '#666')}
+                                  {getLessonIcon(lesson.type, theme.textSecondary)}
                                 </View>
                                 <View style={styles.lessonItemBody}>
-                                  <Text style={styles.lessonItemTitle}>
+                                  <Text style={[styles.lessonItemTitle, { color: theme.text }]}>
                                     {lesson.title}
                                   </Text>
                                   {!!lesson.description && (
@@ -681,7 +691,7 @@ export default function CourseDetailScreen() {
                                     </Text>
                                   )}
                                   {lesson.duration != null && lesson.duration > 0 && (
-                                    <Text style={styles.lessonDur}>
+                                    <Text style={[styles.lessonDur, { color: theme.textSecondary }]}>
                                       {formatDuration(lesson.duration)}
                                     </Text>
                                   )}
@@ -695,15 +705,15 @@ export default function CourseDetailScreen() {
                   })}
                 </View>
               </View>
-              <View style={styles.sep} />
+              <View style={[styles.sep, { backgroundColor: theme.surfaceEl }]} />
             </>
           )}
 
           {/* Instructor */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Instructor</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Instructor</Text>
             <Pressable
-              style={({ pressed }) => [styles.instructorCard, { opacity: pressed ? 0.85 : 1 }]}
+              style={({ pressed }) => [styles.instructorCard, { backgroundColor: theme.surfaceEl, opacity: pressed ? 0.85 : 1 }]}
               onPress={() => router.push(`/instructor/${course.instructor.id}` as never)}
             >
               {course.instructor.profilePicture ? (
@@ -727,24 +737,24 @@ export default function CourseDetailScreen() {
               )}
               <View style={{ flex: 1 }}>
                 <View style={styles.instructorNameRow}>
-                  <Text style={styles.instructorName}>{course.instructor.fullName}</Text>
+                  <Text style={[styles.instructorName, { color: theme.text }]}>{course.instructor.fullName}</Text>
                   {course.instructor.isVerified && (
                     <SealCheck size={15} color={theme.primary} weight="fill" />
                   )}
                 </View>
                 {!!course.instructor.professionalTitle && (
-                  <Text style={styles.instructorRole}>
+                  <Text style={[styles.instructorRole, { color: theme.textSecondary }]}>
                     {course.instructor.professionalTitle}
                   </Text>
                 )}
                 <View style={styles.instructorMeta}>
                   <Star size={13} color="#FFB800" weight="fill" />
-                  <Text style={styles.instructorMetaText}>
+                  <Text style={[styles.instructorMetaText, { color: theme.textSecondary }]}>
                     {course.averageRating.toFixed(1)} instructor rating
                   </Text>
-                  <Text style={styles.instructorMetaDot}>·</Text>
-                  <Users size={13} color="#666" />
-                  <Text style={styles.instructorMetaText}>
+                  <Text style={[styles.instructorMetaDot, { color: theme.border }]}>·</Text>
+                  <Users size={13} color={theme.textSecondary} />
+                  <Text style={[styles.instructorMetaText, { color: theme.textSecondary }]}>
                     {formatStudents(course.totalStudents)} students
                   </Text>
                 </View>
@@ -758,10 +768,10 @@ export default function CourseDetailScreen() {
           {/* Student reviews */}
           {course.totalReviews > 0 && (
             <>
-              <View style={styles.sep} />
+              <View style={[styles.sep, { backgroundColor: theme.surfaceEl }]} />
               <View style={styles.section}>
                 <View style={styles.reviewsSectionHeader}>
-                  <Text style={styles.sectionTitle}>Student reviews</Text>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Student reviews</Text>
                   <Pressable
                     hitSlop={8}
                     onPress={() =>
@@ -787,7 +797,7 @@ export default function CourseDetailScreen() {
                 {/* Rating summary */}
                 <View style={styles.ratingSummary}>
                   <View style={styles.ratingBig}>
-                    <Text style={styles.ratingBigNum}>{course.averageRating.toFixed(1)}</Text>
+                    <Text style={[styles.ratingBigNum, { color: theme.text }]}>{course.averageRating.toFixed(1)}</Text>
                     <View style={styles.stars}>
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
@@ -798,7 +808,7 @@ export default function CourseDetailScreen() {
                         />
                       ))}
                     </View>
-                    <Text style={styles.ratingBigLabel}>
+                    <Text style={[styles.ratingBigLabel, { color: theme.textSecondary }]}>
                       {course.totalReviews.toLocaleString()} {course.totalReviews === 1 ? 'rating' : 'ratings'}
                     </Text>
                   </View>
@@ -806,7 +816,7 @@ export default function CourseDetailScreen() {
 
                 {/* Review list */}
                 {reviews.length > 0 && (
-                  <View style={styles.reviewList}>
+                  <View style={[styles.reviewList, { borderColor: theme.border }]}>
                     {reviews.map((review, i) => (
                       <ReviewCard
                         key={review.id}
@@ -824,16 +834,16 @@ export default function CourseDetailScreen() {
       </ScrollView>
 
       {/* ── STICKY BOTTOM BAR ───────────────────────────────────────────── */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View style={styles.bottomBarInner}>
           <View style={styles.priceBlock}>
             {isEnrolled ? (
-              <Text style={styles.enrolledLabel}>Enrolled</Text>
+              <Text style={[styles.enrolledLabel, { color: theme.success }]}>Enrolled</Text>
             ) : (
               <>
-                <Text style={styles.priceMain}>{priceLabel}</Text>
+                <Text style={[styles.priceMain, { color: theme.text }]}>{priceLabel}</Text>
                 {!!originalPrice && (
-                  <Text style={styles.priceOriginal}>{originalPrice}</Text>
+                  <Text style={[styles.priceOriginal, { color: theme.textSecondary }]}>{originalPrice}</Text>
                 )}
                 {course.discountPercent > 0 && (
                   <View style={styles.discountBadge}>
@@ -881,7 +891,7 @@ export default function CourseDetailScreen() {
 // ─── styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#fff' },
+  root: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
 
   heroErrorText: { color: '#fff', fontSize: 16, fontFamily: Fonts.regular },
@@ -898,7 +908,7 @@ const styles = StyleSheet.create({
   hero: {
     backgroundColor: HERO_BG,
     paddingHorizontal: 16,
-    paddingBottom: 0,
+    paddingBottom: 20,
     gap: 10,
   },
   heroNav: {
@@ -1027,8 +1037,8 @@ const styles = StyleSheet.create({
   },
 
   /* ── Body ── */
-  body: { backgroundColor: '#fff' },
-  sep: { height: 8, backgroundColor: '#F0F2F5' },
+  body: {},
+  sep: { height: 8 },
   section: {
     paddingHorizontal: 16,
     paddingVertical: 20,
@@ -1037,7 +1047,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontFamily: Fonts.extraBold,
-    color: '#1C1D1F',
     letterSpacing: -0.3,
   },
 
@@ -1046,38 +1055,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#EEF0F3',
     borderRadius: 100,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  skillText: { fontSize: 12, fontFamily: Fonts.medium, color: '#1C1D1F' },
+  skillText: { fontSize: 12, fontFamily: Fonts.medium },
 
   includesList: { gap: 13 },
   includesRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   includesText: {
     fontSize: 14,
     fontFamily: Fonts.regular,
-    color: '#1C1D1F',
     flex: 1,
   },
 
   contentMeta: {
     fontSize: 13,
     fontFamily: Fonts.regular,
-    color: '#666',
     marginTop: -6,
   },
   accordion: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     borderRadius: 8,
     overflow: 'hidden',
   },
   accordionSection: {},
   accordionSectionBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   accordionHeader: {
     flexDirection: 'row',
@@ -1085,24 +1089,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 14,
     gap: 10,
-    backgroundColor: '#fff',
   },
   accordionHeaderTitle: {
     fontSize: 14,
     fontFamily: Fonts.bold,
-    color: '#1C1D1F',
     lineHeight: 20,
   },
   accordionHeaderMeta: {
     fontSize: 12,
     fontFamily: Fonts.regular,
-    color: '#666',
     marginTop: 3,
   },
   lessonList: {
-    backgroundColor: '#FAFAFA',
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
   },
   lessonItem: {
     flexDirection: 'row',
@@ -1115,12 +1114,10 @@ const styles = StyleSheet.create({
   lessonItemBody: { flex: 1, gap: 4 },
   lessonItemBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
   },
   lessonItemTitle: {
     fontSize: 13,
     fontFamily: Fonts.regular,
-    color: '#1C1D1F',
     lineHeight: 18,
   },
   lessonItemRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -1128,12 +1125,11 @@ const styles = StyleSheet.create({
   lessonDur: {
     fontSize: 11,
     fontFamily: Fonts.regular,
-    color: '#666',
     minWidth: 30,
     textAlign: 'right',
   },
 
-  instructorCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, backgroundColor: '#F7F9FA', borderRadius: 12, padding: 14 },
+  instructorCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, borderRadius: 12, padding: 14 },
   instructorAvatar: { width: 60, height: 60, borderRadius: 30 },
   instructorAvatarFallback: { justifyContent: 'center', alignItems: 'center' },
   instructorInitial: { fontSize: 24, fontFamily: Fonts.extraBold },
@@ -1143,11 +1139,10 @@ const styles = StyleSheet.create({
     gap: 5,
     flexWrap: 'wrap',
   },
-  instructorName: { fontSize: 16, fontFamily: Fonts.bold, color: '#1C1D1F' },
+  instructorName: { fontSize: 16, fontFamily: Fonts.bold },
   instructorRole: {
     fontSize: 13,
     fontFamily: Fonts.regular,
-    color: '#666',
     marginTop: 2,
   },
   instructorMeta: {
@@ -1157,8 +1152,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
     flexWrap: 'wrap',
   },
-  instructorMetaText: { fontSize: 12, fontFamily: Fonts.regular, color: '#666' },
-  instructorMetaDot: { color: '#CCC', fontSize: 13 },
+  instructorMetaText: { fontSize: 12, fontFamily: Fonts.regular },
+  instructorMetaDot: { fontSize: 13 },
 
   /* ── Reviews ── */
   reviewsSectionHeader: {
@@ -1187,18 +1182,15 @@ const styles = StyleSheet.create({
   ratingBigNum: {
     fontSize: 40,
     fontFamily: Fonts.extraBold,
-    color: '#1C1D1F',
     lineHeight: 44,
     letterSpacing: -1,
   },
   ratingBigLabel: {
     fontSize: 12,
     fontFamily: Fonts.regular,
-    color: '#666',
   },
   reviewList: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     borderRadius: 10,
     overflow: 'hidden',
   },
@@ -1206,11 +1198,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 14,
     gap: 8,
-    backgroundColor: '#fff',
   },
   reviewCardBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -1235,7 +1225,6 @@ const styles = StyleSheet.create({
   reviewName: {
     fontSize: 14,
     fontFamily: Fonts.semiBold,
-    color: '#1C1D1F',
   },
   reviewMeta: {
     flexDirection: 'row',
@@ -1250,17 +1239,14 @@ const styles = StyleSheet.create({
   reviewDate: {
     fontSize: 11,
     fontFamily: Fonts.regular,
-    color: '#999',
   },
   reviewTitle: {
     fontSize: 13,
     fontFamily: Fonts.bold,
-    color: '#1C1D1F',
   },
   reviewComment: {
     fontSize: 13,
     fontFamily: Fonts.regular,
-    color: '#444',
     lineHeight: 20,
   },
   reviewReadToggle: {
@@ -1275,9 +1261,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
     paddingTop: 12,
     paddingHorizontal: 16,
   },
@@ -1292,13 +1276,11 @@ const styles = StyleSheet.create({
   priceMain: {
     fontSize: 20,
     fontFamily: Fonts.extraBold,
-    color: '#1C1D1F',
     letterSpacing: -0.5,
   },
   priceOriginal: {
     fontSize: 13,
     fontFamily: Fonts.regular,
-    color: '#999',
     textDecorationLine: 'line-through',
   },
   discountBadge: {
@@ -1308,7 +1290,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   discountText: { fontSize: 11, fontFamily: Fonts.bold, color: '#8B6914' },
-  enrolledLabel: { fontSize: 14, fontFamily: Fonts.semiBold, color: '#059669' },
+  enrolledLabel: { fontSize: 14, fontFamily: Fonts.semiBold },
   ctaBtn: {
     height: 46,
     borderRadius: 6,

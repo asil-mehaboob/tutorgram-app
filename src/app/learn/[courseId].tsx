@@ -619,8 +619,8 @@ export default function CourseLearnScreen() {
 
   if (courseLoading) {
     return (
-      <View style={[styles.fullCenter, { backgroundColor: '#0F1117' }]}>
-        <ActivityIndicator color={PRIMARY} size="large" />
+      <View style={[styles.fullCenter, { backgroundColor: theme.background }]}>
+        <ActivityIndicator color={theme.primary} size="large" />
       </View>
     );
   }

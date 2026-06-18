@@ -17,11 +17,20 @@ import { getTransactions } from '@/lib/api/commerce';
 import type { TransactionRecord } from '@/lib/api/commerce';
 
 const STATUS_CONFIG = {
-  COMPLETED: { label: 'Paid', Icon: CheckCircle, color: '#1E6B1E' },
-  PENDING: { label: 'Pending', Icon: Clock, color: '#E59819' },
-  FAILED: { label: 'Failed', Icon: XCircle, color: '#D32F2F' },
-  REFUNDED: { label: 'Refunded', Icon: ArrowLeft, color: '#6A6F73' },
+  COMPLETED: { label: 'Paid', Icon: CheckCircle },
+  PENDING: { label: 'Pending', Icon: Clock },
+  FAILED: { label: 'Failed', Icon: XCircle },
+  REFUNDED: { label: 'Refunded', Icon: ArrowLeft },
 };
+
+function statusColor(status: string, theme: ReturnType<typeof useTheme>): string {
+  switch (status) {
+    case 'COMPLETED': return theme.success;
+    case 'PENDING': return theme.star;
+    case 'FAILED': return theme.error;
+    default: return theme.textSecondary;
+  }
+}
 
 export default function PurchaseHistoryScreen() {
   const theme = useTheme();
@@ -85,6 +94,7 @@ export default function PurchaseHistoryScreen() {
 
 function TransactionRow({ tx, theme }: { tx: TransactionRecord; theme: ReturnType<typeof useTheme> }) {
   const cfg = STATUS_CONFIG[tx.status] ?? STATUS_CONFIG.PENDING;
+  const color = statusColor(tx.status, theme);
   const date = new Date(tx.paidAt ?? tx.createdAt).toLocaleDateString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric',
   });
@@ -105,8 +115,8 @@ function TransactionRow({ tx, theme }: { tx: TransactionRecord; theme: ReturnTyp
         </Text>
         <Text style={[styles.date, { color: theme.textSecondary }]}>{date}</Text>
         <View style={styles.metaRow}>
-          <cfg.Icon size={13} color={cfg.color} weight="fill" />
-          <Text style={[styles.status, { color: cfg.color }]}>{cfg.label}</Text>
+          <cfg.Icon size={13} color={color} weight="fill" />
+          <Text style={[styles.status, { color: color }]}>{cfg.label}</Text>
           <Text style={[styles.dot, { color: theme.border }]}>·</Text>
           <Text style={[styles.amount, { color: theme.text }]}>{amount}</Text>
         </View>

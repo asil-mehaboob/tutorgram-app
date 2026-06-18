@@ -126,29 +126,30 @@ function TimelineEntry({ children }: { children: React.ReactNode }) {
 }
 
 function ExperienceItem({ item }: { item: InstructorDetail['experience'][0] }) {
+  const theme = useTheme();
   const range = expDateRange(item.startDate, item.endDate, item.isCurrent);
   return (
     <TimelineEntry>
       <View style={styles.tlCard}>
         <View style={styles.tlTitleRow}>
-          <Text style={styles.tlTitle}>{item.title}</Text>
+          <Text style={[styles.tlTitle, { color: theme.text }]}>{item.title}</Text>
           {item.isCurrent && (
-            <View style={styles.currentBadge}>
-              <Text style={styles.currentBadgeText}>Current</Text>
+            <View style={[styles.currentBadge, { backgroundColor: theme.primaryLight }]}>
+              <Text style={[styles.currentBadgeText, { color: theme.primary }]}>Current</Text>
             </View>
           )}
         </View>
-        <Text style={styles.tlOrg}>{item.company}</Text>
+        <Text style={[styles.tlOrg, { color: theme.textSecondary }]}>{item.company}</Text>
         {(!!item.location || !!range) && (
           <View style={styles.tlMetaRow}>
             {!!item.location && (
               <>
-                <MapPin size={11} color="#888" weight="regular" />
-                <Text style={styles.tlMeta}>{item.location}</Text>
-                {!!range && <Text style={styles.tlMetaDot}>·</Text>}
+                <MapPin size={11} color={theme.textSecondary} weight="regular" />
+                <Text style={[styles.tlMeta, { color: theme.textSecondary }]}>{item.location}</Text>
+                {!!range && <Text style={[styles.tlMetaDot, { color: theme.border }]}>·</Text>}
               </>
             )}
-            {!!range && <Text style={styles.tlMeta}>{range}</Text>}
+            {!!range && <Text style={[styles.tlMeta, { color: theme.textSecondary }]}>{range}</Text>}
           </View>
         )}
         {!!item.description && (
@@ -162,6 +163,7 @@ function ExperienceItem({ item }: { item: InstructorDetail['experience'][0] }) {
 }
 
 function EducationItem({ item }: { item: InstructorDetail['education'][0] }) {
+  const theme = useTheme();
   const startY = formatYear(item.startDate);
   const endY = formatYear(item.endDate);
   const yearRange = startY ? (endY ? `${startY} – ${endY}` : startY) : null;
@@ -169,12 +171,12 @@ function EducationItem({ item }: { item: InstructorDetail['education'][0] }) {
   return (
     <TimelineEntry>
       <View style={styles.tlCard}>
-        <Text style={styles.tlTitle}>{item.institution}</Text>
-        <Text style={styles.tlOrg}>
+        <Text style={[styles.tlTitle, { color: theme.text }]}>{item.institution}</Text>
+        <Text style={[styles.tlOrg, { color: theme.textSecondary }]}>
           {item.degree}
           {item.field ? `, ${item.field}` : ''}
         </Text>
-        {!!yearRange && <Text style={styles.tlMeta}>{yearRange}</Text>}
+        {!!yearRange && <Text style={[styles.tlMeta, { color: theme.textSecondary }]}>{yearRange}</Text>}
         {!!item.description && (
           <View style={styles.tlDesc}>
             <RichText html={item.description} />
@@ -186,24 +188,25 @@ function EducationItem({ item }: { item: InstructorDetail['education'][0] }) {
 }
 
 function CertCard({ item }: { item: InstructorDetail['certifications'][0] }) {
+  const theme = useTheme();
   const issued = formatMonthYear(item.issueDate);
   const expires = formatMonthYear(item.expiryDate);
   return (
-    <View style={styles.listCard}>
-      <Certificate size={20} color="#2849EA" weight="duotone" />
+    <View style={[styles.listCard, { backgroundColor: theme.surfaceEl, borderColor: theme.border }]}>
+      <Certificate size={20} color={theme.primary} weight="duotone" />
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={styles.listCardTitle}>{item.name}</Text>
-        <Text style={styles.listCardSub}>{item.issuer}</Text>
+        <Text style={[styles.listCardTitle, { color: theme.text }]}>{item.name}</Text>
+        <Text style={[styles.listCardSub, { color: theme.textSecondary }]}>{item.issuer}</Text>
         {(issued || item.credentialId) && (
           <View style={styles.listCardMeta}>
             {!!issued && (
-              <Text style={styles.listCardMetaText}>
+              <Text style={[styles.listCardMetaText, { color: theme.textSecondary }]}>
                 Issued {issued}
                 {expires ? ` · Expires ${expires}` : ''}
               </Text>
             )}
             {!!item.credentialId && (
-              <Text style={styles.listCardMetaText}>ID: {item.credentialId}</Text>
+              <Text style={[styles.listCardMetaText, { color: theme.textSecondary }]}>ID: {item.credentialId}</Text>
             )}
           </View>
         )}
@@ -213,13 +216,14 @@ function CertCard({ item }: { item: InstructorDetail['certifications'][0] }) {
 }
 
 function AwardCard({ item }: { item: InstructorDetail['awards'][0] }) {
+  const theme = useTheme();
   const year = formatYear(item.date);
   return (
-    <View style={styles.listCard}>
-      <Trophy size={20} color="#2849EA" weight="duotone" />
+    <View style={[styles.listCard, { backgroundColor: theme.surfaceEl, borderColor: theme.border }]}>
+      <Trophy size={20} color={theme.primary} weight="duotone" />
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={styles.listCardTitle}>{item.title}</Text>
-        <Text style={styles.listCardSub}>
+        <Text style={[styles.listCardTitle, { color: theme.text }]}>{item.title}</Text>
+        <Text style={[styles.listCardSub, { color: theme.textSecondary }]}>
           {item.issuer}
           {year ? ` · ${year}` : ''}
         </Text>
@@ -230,15 +234,16 @@ function AwardCard({ item }: { item: InstructorDetail['awards'][0] }) {
 }
 
 function ServiceCard({ item }: { item: InstructorDetail['services'][0] }) {
+  const theme = useTheme();
   return (
-    <View style={styles.serviceCard}>
+    <View style={[styles.serviceCard, { backgroundColor: theme.surfaceEl, borderColor: theme.border }]}>
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={styles.serviceCardName}>{item.name}</Text>
+        <Text style={[styles.serviceCardName, { color: theme.text }]}>{item.name}</Text>
         {!!item.description && <RichText html={item.description} />}
       </View>
-      <View style={styles.servicePriceBadge}>
-        <CurrencyInr size={13} color="#2849EA" weight="bold" />
-        <Text style={styles.servicePriceText}>
+      <View style={[styles.servicePriceBadge, { backgroundColor: theme.primaryLight }]}>
+        <CurrencyInr size={13} color={theme.primary} weight="bold" />
+        <Text style={[styles.servicePriceText, { color: theme.primary }]}>
           {item.price === 0 ? 'Free' : formatPrice(item.price)}
         </Text>
       </View>
@@ -305,7 +310,7 @@ export default function InstructorScreen() {
   const hasCourses = courses.length > 0;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 56 }}>
 
         {/* ══════════ HERO ══════════ */}
