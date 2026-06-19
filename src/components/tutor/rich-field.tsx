@@ -76,7 +76,7 @@ export function RichField({
 
   const editorTheme = useMemo(() => {
     const toolbarBg = isDark ? colors.surfaceEl : colors.surfaceEl;
-    const iconColor = isDark ? colors.text : colors.textSecondary;
+    const iconColor = colors.text;
     return {
       ...(isDark ? darkEditorTheme : {}),
       toolbar: {
@@ -231,6 +231,7 @@ export function RichField({
             editor={editor}
             onMessage={handleWebViewMessage}
             exclusivelyUseCustomOnMessage={false}
+            style={{ flex: 1 }}
           />
         </View>
       </View>

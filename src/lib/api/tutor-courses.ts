@@ -159,7 +159,7 @@ export async function getCourseDraft(id: string): Promise<TutorCourse> {
 }
 
 export async function saveCourseDraft(id: string, data: UpdateCourseInput): Promise<TutorCourse> {
-  return tutorApiRequest<TutorCourse>(`/api/courses/${id}/draft`, { method: 'PATCH', body: data });
+  return tutorApiRequest<TutorCourse>(`/api/courses/${id}/draft`, { method: 'PUT', body: data });
 }
 
 export async function updateLesson(courseId: string, lessonId: string, data: UpdateLessonInput): Promise<TutorLesson> {

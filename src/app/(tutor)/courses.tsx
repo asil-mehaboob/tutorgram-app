@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts, Spacing, BottomTabInset } from '@/constants/theme';
 import { CourseRow } from '@/components/tutor/course-row';
-import { getMyCourses, deleteCourse, publishCourse } from '@/lib/api/tutor-courses';
+import { getMyCourses, deleteCourse } from '@/lib/api/tutor-courses';
 import type { CourseStatus, TutorCourse } from '@/lib/api/tutor-courses';
 
 const TABS: { label: string; value: CourseStatus | 'ALL' }[] = [
@@ -33,17 +33,10 @@ export default function TutorCourses() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tutor-courses'] }),
   });
 
-  const publishMutation = useMutation({
-    mutationFn: (id: string) => publishCourse(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tutor-courses'] }),
-  });
-
-  function handleMore(course: TutorCourse) {
+function handleMore(course: TutorCourse) {
     const actions: { text: string; onPress?: () => void; style?: 'destructive' | 'cancel' }[] = [];
 
-    if (course.status === 'DRAFT') {
-      actions.push({ text: 'Submit for Review', onPress: () => publishMutation.mutate(course.id) });
-    }
+
     if (course.status !== 'ARCHIVED') {
       actions.push({
         text: 'Delete',

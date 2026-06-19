@@ -33,6 +33,7 @@ export default function EditCourse() {
   const [tab, setTab] = useState<ActiveTab>('basics');
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
   const [error, setError] = useState('');
   const [initialized, setInitialized] = useState(false);
 
@@ -77,13 +78,15 @@ export default function EditCourse() {
   function buildPayload() {
     return {
       title: title.trim(),
-      shortDescription: shortDesc.trim(),
-      detailedDescription: detailedDesc.trim(),
+      categoryId: course!.category?.id ?? '',
+      subCategoryId: course!.subCategory?.id ?? null,
       level,
       language,
-      whatYouLearn: whatYouLearn.trim(),
-      whoIsFor: whoIsFor.trim(),
-      requirements: requirements.trim(),
+      shortDescription: shortDesc.trim(),
+      detailedDescription: detailedDesc.trim(),
+      whatYouLearn: whatYouLearn.trim() || null,
+      whoIsFor: whoIsFor.trim() || null,
+      requirements: requirements.trim() || null,
       isFree,
       price: !isFree && priceStr ? parseFloat(priceStr) || null : null,
       discountPercent: !isFree && discountStr ? parseInt(discountStr, 10) || null : null,
@@ -122,6 +125,33 @@ export default function EditCourse() {
   }
 
   const canPublish = course?.status === 'DRAFT' || course?.status === 'REJECTED';
+  const canUnpublish = course?.status === 'PUBLISHED';
+
+  async function handleUnpublish() {
+    if (!id) return;
+    Alert.alert(
+      'Move to Draft',
+      'This will unpublish the course and hide it from students. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Move to Draft', style: 'destructive', onPress: async () => {
+            setUnpublishing(true);
+            setError('');
+            try {
+              await tutorApiRequest(`/api/courses/${id}/publish`, { method: 'POST', body: { action: 'unpublish' } });
+              qc.invalidateQueries({ queryKey: ['tutor-course', id] });
+              Alert.alert('Moved to Draft', 'Course is now a draft and hidden from students.');
+            } catch (e: any) {
+              setError(e.message ?? 'Failed to unpublish course.');
+            } finally {
+              setUnpublishing(false);
+            }
+          },
+        },
+      ]
+    );
+  }
 
   const TABS: { key: ActiveTab; label: string }[] = [
     { key: 'basics', label: 'Basics' },
@@ -312,21 +342,29 @@ export default function EditCourse() {
               <Pressable
                 onPress={handleSaveDraft}
                 disabled={saving}
-                style={[styles.btn, styles.btnOutline, { borderColor: theme.border, opacity: saving ? 0.6 : 1 }]}
+                style={[styles.btn, styles.btnOutline, { borderColor: theme.border, flexDirection: 'row', gap: 8 }]}
               >
-                {saving
-                  ? <ActivityIndicator size={16} color={theme.primary} />
-                  : <Text style={[styles.btnText, { color: theme.text }]}>Save Draft</Text>}
+                {saving && <ActivityIndicator size={16} color={theme.primary} />}
+                <Text style={[styles.btnText, { color: theme.text }]}>{saving ? 'Saving…' : 'Save Draft'}</Text>
               </Pressable>
               {canPublish && (
                 <Pressable
                   onPress={handlePublish}
                   disabled={publishing}
-                  style={[styles.btn, { backgroundColor: theme.primary, opacity: publishing ? 0.7 : 1 }]}
+                  style={[styles.btn, { backgroundColor: theme.primary, flexDirection: 'row', gap: 8 }]}
                 >
-                  {publishing
-                    ? <ActivityIndicator size={16} color="#fff" />
-                    : <Text style={[styles.btnText, { color: '#fff' }]}>Publish Course</Text>}
+                  {publishing && <ActivityIndicator size={16} color="#fff" />}
+                  <Text style={[styles.btnText, { color: '#fff' }]}>{publishing ? 'Publishing…' : 'Publish Course'}</Text>
+                </Pressable>
+              )}
+              {canUnpublish && (
+                <Pressable
+                  onPress={handleUnpublish}
+                  disabled={unpublishing}
+                  style={[styles.btn, styles.btnOutline, { borderColor: theme.error, flexDirection: 'row', gap: 8 }]}
+                >
+                  {unpublishing && <ActivityIndicator size={16} color={theme.error} />}
+                  <Text style={[styles.btnText, { color: theme.error }]}>{unpublishing ? 'Moving…' : 'Move to Draft'}</Text>
                 </Pressable>
               )}
             </View>
