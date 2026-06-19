@@ -8,7 +8,7 @@ export type VideoStatus = 'NONE' | 'PROCESSING' | 'READY' | 'FAILED';
 export type Category = {
   id: string;
   name: string;
-  subcategories: { id: string; name: string }[];
+  subCategories: { id: string; name: string }[];
 };
 
 export type TutorLesson = {
@@ -174,6 +174,6 @@ export async function getCategories(): Promise<Category[]> {
   return tutorApiRequest<Category[]>('/api/categories');
 }
 
-export async function getAiComplete(field: string, context: Record<string, string>): Promise<{ result: string }> {
-  return tutorApiRequest<{ result: string }>('/api/ai/complete', { method: 'POST', body: { field, context } });
+export async function getAiComplete(field: string, context: Record<string, string>): Promise<{ completion: string }> {
+  return tutorApiRequest<{ completion: string }>('/api/ai/complete', { method: 'POST', body: { field, context } });
 }
