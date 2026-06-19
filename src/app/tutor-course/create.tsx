@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { File as FSFile } from 'expo-file-system';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -445,7 +446,7 @@ function Step4({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsEditing: true,
       aspect: [16, 9],
       quality: 0.85,
@@ -456,9 +457,11 @@ function Step4({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
     setUploading(true);
     setUploadPct(0);
     try {
-      const ext = asset.uri.split('.').pop() ?? 'jpg';
-      const mime = asset.mimeType ?? 'image/jpeg';
-      const { uploadUrl, key } = await presignUpload('thumbnail', `thumbnail.${ext}`, mime);
+      const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      const fsFile = new FSFile(asset.uri);
+      const size = fsFile.size ?? asset.fileSize ?? 0;
+      const { uploadUrl, key } = await presignUpload('thumbnail', `thumbnail.${ext}`, mime, size);
       await uploadFileToS3(uploadUrl, asset.uri, mime, setUploadPct);
       update({ thumbnailKey: key });
     } catch (e: any) {
