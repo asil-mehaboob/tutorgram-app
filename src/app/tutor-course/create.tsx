@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   X, ArrowLeft, ArrowRight, Check, BookOpen, VideoCamera,
   Article, ListChecks, Paperclip, Trash, Plus, Image as ImageIcon,
-  CurrencyInr, Tag,
+  CurrencyInr, Tag, WarningCircle,
 } from 'phosphor-react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
@@ -1180,42 +1180,44 @@ export default function CreateCourse() {
           {step === 4 && <Step5 form={form} update={update} />}
           {step === 5 && <Step6 form={form} update={update} />}
           {step === 6 && <Step7 form={form} update={update} />}
-
-          {error ? (
-            <View style={[styles.errorBox, { backgroundColor: '#FEECEC', borderColor: '#F5C6C6' }]}>
-              <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
-            </View>
-          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* ── Footer navigation ── */}
       <View style={[styles.footer, { borderTopColor: theme.border, paddingBottom: insets.bottom + 12, backgroundColor: theme.surface }]}>
-        {step > 0 && (
+        {error ? (
+          <View style={[styles.errorBanner, { backgroundColor: `${theme.error}12`, borderColor: `${theme.error}30` }]}>
+            <WarningCircle size={16} color={theme.error} weight="fill" />
+            <Text style={[styles.errorBannerText, { color: theme.error }]} numberOfLines={2}>{error}</Text>
+          </View>
+        ) : null}
+        <View style={styles.footerBtns}>
+          {step > 0 && (
+            <Pressable
+              onPress={() => { setError(''); setStep(step - 1); }}
+              style={[styles.backBtn, { borderColor: theme.border, flex: 1 }]}
+            >
+              <ArrowLeft size={16} color={theme.text} weight="regular" />
+              <Text style={[styles.backBtnText, { color: theme.text }]}>Back</Text>
+            </Pressable>
+          )}
           <Pressable
-            onPress={() => { setError(''); setStep(step - 1); }}
-            style={[styles.backBtn, { borderColor: theme.border, flex: 1 }]}
+            onPress={handleContinue}
+            disabled={isSubmitting}
+            style={[styles.continueBtn, { backgroundColor: theme.primary, flex: 1, opacity: isSubmitting ? 0.8 : 1 }]}
           >
-            <ArrowLeft size={16} color={theme.text} weight="regular" />
-            <Text style={[styles.backBtnText, { color: theme.text }]}>Back</Text>
+            {isSubmitting
+              ? <ActivityIndicator color="#fff" />
+              : (
+                <>
+                  <Text style={styles.continueBtnText}>
+                    {isLastStep ? 'Submit for Review' : 'Continue'}
+                  </Text>
+                  {!isLastStep && <ArrowRight size={16} color="#fff" weight="bold" />}
+                </>
+              )}
           </Pressable>
-        )}
-        <Pressable
-          onPress={handleContinue}
-          disabled={isSubmitting}
-          style={[styles.continueBtn, { backgroundColor: theme.primary, flex: 1, opacity: isSubmitting ? 0.8 : 1 }]}
-        >
-          {isSubmitting
-            ? <ActivityIndicator color="#fff" />
-            : (
-              <>
-                <Text style={styles.continueBtnText}>
-                  {isLastStep ? 'Submit for Review' : 'Continue'}
-                </Text>
-                {!isLastStep && <ArrowRight size={16} color="#fff" weight="bold" />}
-              </>
-            )}
-        </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -1355,11 +1357,12 @@ const styles = StyleSheet.create({
   promoActiveLabel: { fontSize: 14, fontFamily: Fonts.medium },
 
   // Error
-  errorBox: { borderWidth: 1, borderRadius: 10, padding: 12 },
-  errorText: { fontSize: 13, fontFamily: Fonts.regular },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 },
+  errorBannerText: { flex: 1, fontSize: 13, fontFamily: Fonts.medium, lineHeight: 18 },
 
   // Footer
-  footer: { flexDirection: 'row', gap: 10, paddingHorizontal: Spacing.three, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  footer: { gap: 0, paddingHorizontal: Spacing.three, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  footerBtns: { flexDirection: 'row', gap: 10 },
   backBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingVertical: 14, borderRadius: 12, borderWidth: 1 },
   backBtnText: { fontSize: 14, fontFamily: Fonts.semiBold },
   continueBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 14, borderRadius: 12 },
