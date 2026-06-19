@@ -1,11 +1,35 @@
-import { useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
-  TextB, TextItalic, ListBullets, ListNumbers, TextHOne, Quotes,
-} from 'phosphor-react-native';
-import { useTheme } from '@/hooks/use-theme';
-import { Fonts } from '@/constants/theme';
+  RichText,
+  Toolbar,
+  useEditorBridge,
+  useEditorContent,
+  TenTapStartKit,
+  PlaceholderBridge,
+  darkEditorTheme,
+  darkEditorCss,
+  DEFAULT_TOOLBAR_ITEMS,
+} from '@10play/tentap-editor';
+import { useThemeContext } from '@/lib/theme/context';
+import { Colors, Fonts } from '@/constants/theme';
 import { getAiComplete } from '@/lib/api/tutor-courses';
+
+// Toolbar items for course content — no link/image/tasklist/code
+const EDITOR_TOOLBAR_ITEMS = [
+  DEFAULT_TOOLBAR_ITEMS[0],  // bold
+  DEFAULT_TOOLBAR_ITEMS[1],  // italic
+  DEFAULT_TOOLBAR_ITEMS[6],  // underline
+  DEFAULT_TOOLBAR_ITEMS[7],  // strike
+  DEFAULT_TOOLBAR_ITEMS[4],  // heading (opens H1-H6 sub-menu)
+  DEFAULT_TOOLBAR_ITEMS[8],  // blockquote
+  DEFAULT_TOOLBAR_ITEMS[10], // bullet list
+  DEFAULT_TOOLBAR_ITEMS[9],  // ordered list
+  DEFAULT_TOOLBAR_ITEMS[11], // indent
+  DEFAULT_TOOLBAR_ITEMS[12], // outdent
+  DEFAULT_TOOLBAR_ITEMS[13], // undo
+  DEFAULT_TOOLBAR_ITEMS[14], // redo
+];
 
 type RichFieldProps = {
   label: string;
@@ -14,58 +38,156 @@ type RichFieldProps = {
   placeholder?: string;
   required?: boolean;
   optional?: boolean;
-  maxLength?: number;
+  maxLength?: number;  // kept for API compat — not enforced in rich editor
   minHeight?: number;
   aiField?: string;
   courseTitle?: string;
-  rte?: boolean;
+  rte?: boolean;  // kept for API compat — always rich editor now
 };
 
-type Selection = { start: number; end: number };
-
-function insertAround(text: string, sel: Selection, before: string, after = before): string {
-  const selected = text.slice(sel.start, sel.end);
-  return text.slice(0, sel.start) + before + (selected || 'text') + after + text.slice(sel.end);
-}
-
-function insertLinePrefix(text: string, sel: Selection, prefix: string): string {
-  const lineStart = text.lastIndexOf('\n', sel.start - 1) + 1;
-  const lineText = text.slice(lineStart, sel.end);
-  const lines = lineText.split('\n');
-  const prefixed = lines.map((l) => {
-    if (l.startsWith(prefix)) return l;
-    return prefix + l;
-  }).join('\n');
-  return text.slice(0, lineStart) + prefixed + text.slice(sel.end);
-}
-
-function insertNumberedList(text: string, sel: Selection): string {
-  const lineStart = text.lastIndexOf('\n', sel.start - 1) + 1;
-  const lineText = text.slice(lineStart, sel.end);
-  const lines = lineText.split('\n');
-  let n = 1;
-  const prefixed = lines.map((l) => `${n++}. ${l}`).join('\n');
-  return text.slice(0, lineStart) + prefixed + text.slice(sel.end);
-}
-
 export function RichField({
-  label, value, onChangeText, placeholder, required, optional,
-  maxLength, minHeight = 120, aiField, courseTitle, rte = false,
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  required,
+  optional,
+  minHeight = 150,
+  aiField,
+  courseTitle,
 }: RichFieldProps) {
-  const theme = useTheme();
+  const { resolvedTheme } = useThemeContext();
+  const isDark = resolvedTheme === 'dark';
+  const colors = isDark ? Colors.dark : Colors.light;
   const [aiLoading, setAiLoading] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const selRef = useRef<Selection>({ start: 0, end: 0 });
-  const inputRef = useRef<TextInput>(null);
+
+  // Tracks last value we sent out — prevents sync loops
+  const lastOutRef = useRef<string>(value ?? '');
+
+  const bridgeExtensions = useMemo(
+    () => [
+      ...TenTapStartKit,
+      PlaceholderBridge.configureExtension({
+        placeholder: placeholder ?? 'Start typing…',
+      }),
+    ],
+    [] // stable — placeholder won't change after mount
+  );
+
+  const editorTheme = useMemo(() => {
+    const toolbarBg = isDark ? colors.surfaceEl : colors.surfaceEl;
+    const iconColor = isDark ? colors.text : colors.textSecondary;
+    return {
+      ...(isDark ? darkEditorTheme : {}),
+      toolbar: {
+        toolbarBody: {
+          flex: 1,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+          borderBottomColor: colors.border,
+          backgroundColor: toolbarBg,
+          minWidth: '100%' as const,
+          height: 44,
+        },
+        toolbarButton: {
+          paddingHorizontal: 8,
+          backgroundColor: toolbarBg,
+          alignItems: 'center' as const,
+          justifyContent: 'center' as const,
+        },
+        iconWrapper: { borderRadius: 4, backgroundColor: toolbarBg },
+        iconWrapperActive: { backgroundColor: isDark ? '#6b7280' : colors.border },
+        iconWrapperDisabled: { opacity: 0.3 },
+        iconDisabled: { tintColor: '#CACACA' },
+        hidden: { display: 'none' as const },
+        icon: { height: 28, width: 28, tintColor: iconColor },
+        iconActive: { tintColor: colors.primary },
+        linkBarTheme: {},
+        keyboardAvoidingView: { position: 'absolute' as const, width: '100%' as const, bottom: 0 },
+      },
+      webview: { backgroundColor: colors.surface },
+      webviewContainer: {},
+    };
+  }, [isDark, colors]);
+
+  const editor = useEditorBridge({
+    autofocus: false,
+    avoidIosKeyboard: true,
+    initialContent: value || '<p></p>',
+    bridgeExtensions,
+    theme: editorTheme,
+  });
+
+  // Reactive HTML content from the editor
+  const content = useEditorContent(editor, { type: 'html', debounceInterval: 150 });
+
+  // Push editor changes to parent
+  useEffect(() => {
+    if (content !== undefined && content !== lastOutRef.current) {
+      lastOutRef.current = content;
+      onChangeText(content);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
+
+  // Pull external value changes into editor (AI complete, reset, etc.)
+  useEffect(() => {
+    if (value !== undefined && value !== lastOutRef.current) {
+      lastOutRef.current = value;
+      editor.setContent(value || '<p></p>');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  // Inject theme CSS once the WebView editor is ready
+  const handleWebViewMessage = useCallback(
+    (event: { nativeEvent: { data: string } }) => {
+      try {
+        const { type } = JSON.parse(event.nativeEvent.data);
+        if (type === 'editor-ready') {
+          editor.injectCSS(`
+            ${isDark ? darkEditorCss : ''}
+            * { background-color: ${colors.surface} !important; color: ${colors.text} !important; }
+            .ProseMirror { padding: 12px; font-size: 15px; line-height: 1.65; }
+            .ProseMirror p { margin: 0 0 8px; }
+            .ProseMirror h1, .ProseMirror h2, .ProseMirror h3 { font-weight: 700; margin: 12px 0 6px; }
+            .ProseMirror h1 { font-size: 22px; }
+            .ProseMirror h2 { font-size: 18px; }
+            .ProseMirror h3 { font-size: 16px; }
+            .ProseMirror ul, .ProseMirror ol { padding-left: 20px; margin: 8px 0; }
+            .ProseMirror li { margin-bottom: 4px; }
+            .ProseMirror blockquote {
+              border-left: 3px solid ${colors.border};
+              margin: 8px 0;
+              padding-left: 14px;
+              color: ${colors.textSecondary} !important;
+              font-style: italic;
+            }
+            .ProseMirror strong { font-weight: 700; }
+            .ProseMirror em { font-style: italic; }
+            .ProseMirror u { text-decoration: underline; }
+            .ProseMirror s { text-decoration: line-through; }
+          `);
+        }
+      } catch {}
+    },
+    [isDark, colors, editor]
+  );
 
   async function handleAiComplete() {
     if (!aiField) return;
     setAiLoading(true);
     try {
+      const currentHtml = await editor.getHTML();
       const ctx: Record<string, string> = { courseTitle: courseTitle ?? '' };
-      if (value.trim()) ctx.currentContent = value.trim().slice(0, 500);
+      const stripped = currentHtml?.replace(/<[^>]*>/g, '').trim();
+      if (stripped) ctx.currentContent = stripped.slice(0, 500);
       const result = await getAiComplete(aiField, ctx);
-      onChangeText(result.completion);
+      const html = result.completion;
+      lastOutRef.current = html;
+      editor.setContent(html);
+      onChangeText(html);
     } catch (e: any) {
       Alert.alert('AI Complete failed', e?.message ?? 'Could not generate content. Please try again.');
     } finally {
@@ -73,125 +195,68 @@ export function RichField({
     }
   }
 
-  function applyFormat(type: 'bold' | 'italic' | 'bullet' | 'numbered' | 'heading' | 'quote') {
-    const sel = selRef.current;
-    let next = value;
-    switch (type) {
-      case 'bold': next = insertAround(value, sel, '**'); break;
-      case 'italic': next = insertAround(value, sel, '_'); break;
-      case 'bullet': next = insertLinePrefix(value, sel, '• '); break;
-      case 'numbered': next = insertNumberedList(value, sel); break;
-      case 'heading': next = insertLinePrefix(value, sel, '## '); break;
-      case 'quote': next = insertLinePrefix(value, sel, '> '); break;
-    }
-    onChangeText(next);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  }
-
-  const over = maxLength && value.length >= maxLength * 0.9;
-
   return (
     <View style={styles.container}>
-      {/* Label row */}
+      {/* Label + AI button */}
       <View style={styles.labelRow}>
-        <Text style={[styles.label, { color: theme.text }]}>
+        <Text style={[styles.label, { color: colors.text }]}>
           {label}
-          {required && <Text style={{ color: theme.error }}> *</Text>}
-          {optional && <Text style={[styles.optionalTag, { color: theme.textSecondary }]}> (optional)</Text>}
+          {required && <Text style={{ color: colors.error }}> *</Text>}
+          {optional && <Text style={[styles.optional, { color: colors.textSecondary }]}> (optional)</Text>}
         </Text>
         {aiField && (
           <Pressable
             onPress={handleAiComplete}
             disabled={aiLoading}
-            style={[styles.aiBtn, { borderColor: theme.border, backgroundColor: theme.surface, opacity: aiLoading ? 0.6 : 1 }]}
+            style={[
+              styles.aiBtn,
+              { borderColor: colors.border, backgroundColor: colors.surface, opacity: aiLoading ? 0.6 : 1 },
+            ]}
           >
-            <Text style={[styles.aiBtnText, { color: theme.text }]}>
-              {aiLoading ? 'Completing...' : 'Complete with AI'}
+            <Text style={[styles.aiBtnText, { color: colors.text }]}>
+              {aiLoading ? 'Completing…' : 'Complete with AI'}
             </Text>
           </Pressable>
         )}
       </View>
 
-      {/* RTE toolbar */}
-      {rte && (
-        <View style={[styles.toolbar, { backgroundColor: theme.surfaceEl, borderColor: theme.border }]}>
-          {([
-            { type: 'bold', icon: <TextB size={15} color={theme.text} weight="bold" /> },
-            { type: 'italic', icon: <TextItalic size={15} color={theme.text} weight="regular" /> },
-            { type: 'heading', icon: <TextHOne size={15} color={theme.text} weight="regular" /> },
-            { type: 'quote', icon: <Quotes size={15} color={theme.text} weight="regular" /> },
-            { type: 'bullet', icon: <ListBullets size={15} color={theme.text} weight="regular" /> },
-            { type: 'numbered', icon: <ListNumbers size={15} color={theme.text} weight="regular" /> },
-          ] as { type: Parameters<typeof applyFormat>[0]; icon: React.ReactNode }[]).map((btn) => (
-            <Pressable
-              key={btn.type}
-              onPress={() => applyFormat(btn.type)}
-              style={({ pressed }) => [styles.toolbarBtn, { opacity: pressed ? 0.5 : 1 }]}
-            >
-              {btn.icon}
-            </Pressable>
-          ))}
+      {/* Bordered editor container */}
+      <View style={[styles.editorBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+        {/* Formatting toolbar — always visible */}
+        <Toolbar editor={editor} hidden={false} items={EDITOR_TOOLBAR_ITEMS} />
+
+        {/* TipTap WebView editor — fixed height prevents infinite growth in ScrollView */}
+        <View style={{ height: minHeight }}>
+          <RichText
+            editor={editor}
+            onMessage={handleWebViewMessage}
+            exclusivelyUseCustomOnMessage={false}
+          />
         </View>
-      )}
-
-      {/* Input */}
-      <TextInput
-        ref={inputRef}
-        style={[
-          styles.input,
-          rte && styles.inputRte,
-          { borderColor: focused ? theme.primary : theme.border, backgroundColor: theme.surface, color: theme.text, minHeight },
-        ]}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textSecondary}
-        multiline
-        textAlignVertical="top"
-        maxLength={maxLength}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onSelectionChange={(e) => { selRef.current = e.nativeEvent.selection; }}
-      />
-
-      {maxLength && (
-        <Text style={[styles.charCount, { color: over ? theme.error : theme.textSecondary }]}>
-          {value.length} / {maxLength}
-        </Text>
-      )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 6 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label: { fontSize: 13, fontFamily: Fonts.semiBold, flexShrink: 1 },
-  optionalTag: { fontSize: 12, fontFamily: Fonts.regular },
-  aiBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth },
-  aiBtnText: { fontSize: 12, fontFamily: Fonts.semiBold },
-  toolbar: {
+  container: { gap: 8 },
+  labelRow: {
     flexDirection: 'row',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: 0,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    gap: 2,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  toolbarBtn: { padding: 8, borderRadius: 6 },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
+  label: { fontSize: 13, fontFamily: Fonts.semiBold, flexShrink: 1 },
+  optional: { fontSize: 12, fontFamily: Fonts.regular },
+  aiBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 10,
-    padding: 12,
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    lineHeight: 20,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  inputRte: {
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
+  aiBtnText: { fontSize: 12, fontFamily: Fonts.semiBold },
+  editorBox: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  charCount: { fontSize: 11, fontFamily: Fonts.regular, textAlign: 'right' },
 });

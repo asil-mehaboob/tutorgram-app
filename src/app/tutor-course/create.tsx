@@ -5,13 +5,14 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { File as FSFile } from 'expo-file-system';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import {
   X, ArrowLeft, ArrowRight, Check, BookOpen, VideoCamera,
   Article, ListChecks, Paperclip, Trash, Plus, Image as ImageIcon,
-  CurrencyInr, Tag, WarningCircle, Play,
+  CurrencyInr, Tag, WarningCircle, Play, CaretDown, CaretUp,
 } from 'phosphor-react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
@@ -28,6 +29,18 @@ import type { Category } from '@/lib/api/tutor-courses';
 type LessonType = 'VIDEO' | 'ARTICLE' | 'QUIZ' | 'ASSIGNMENT' | 'RESOURCE';
 type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ALL_LEVELS';
 type DeliveryType = 'recorded' | 'live';
+type QuizQuestionType = 'mcq' | 'true-false' | 'multiple-select' | 'short-answer';
+
+type QuizQuestion = {
+  id: string;
+  questionType: QuizQuestionType;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  correctAnswers: number[];
+  shortAnswer: string;
+  explanation: string;
+};
 
 type FormLesson = {
   id?: string;
@@ -37,6 +50,13 @@ type FormLesson = {
   duration: number;
   isFreePreview: boolean;
   order: number;
+  videoUri?: string | null;
+  quizQuestions: QuizQuestion[];
+  assignmentDelivery: 'file' | 'text';
+  assignmentFileUri?: string | null;
+  assignmentFileName?: string | null;
+  resourceFileUri?: string | null;
+  resourceFileName?: string | null;
 };
 
 type FormSection = {
@@ -96,7 +116,7 @@ const INITIAL_FORM: CourseForm = {
   thumbnailKey: null, thumbnailUri: null, promoVideoUrl: '', promoVideoUri: null,
   sections: [{
     title: 'Introduction', description: '', order: 0,
-    lessons: [{ title: 'Getting Started', type: 'VIDEO', content: '', duration: 0, isFreePreview: true, order: 0 }],
+    lessons: [{ title: 'Getting Started', type: 'VIDEO' as LessonType, content: '', duration: 0, isFreePreview: true, order: 0, videoUri: null, quizQuestions: [], assignmentDelivery: 'text' as const }],
   }],
   isFree: true, price: '', discountPercent: '', discountValidTill: '',
   hasLifetimeAccess: true, courseExpiryDate: '', requirements: '',
@@ -356,6 +376,7 @@ function Step2({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
         required
         maxLength={300}
         minHeight={90}
+        rte
         aiField="Short course description"
         courseTitle={form.title}
       />
@@ -367,6 +388,7 @@ function Step2({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
         placeholder="Give students a thorough understanding of what they'll get from this course…"
         required
         minHeight={180}
+        rte
         aiField="Detailed course description"
         courseTitle={form.title}
       />
@@ -387,6 +409,7 @@ function Step3({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
         placeholder="List the key things students will be able to do after completing your course…"
         required
         minHeight={120}
+        rte
         aiField="What students will learn"
         courseTitle={form.title}
       />
@@ -400,6 +423,7 @@ function Step3({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
         placeholder="Specific measurable outcomes students can expect…"
         optional
         minHeight={100}
+        rte
         aiField="Course learning outcomes"
         courseTitle={form.title}
       />
@@ -413,6 +437,7 @@ function Step3({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
         placeholder="Describe the ideal students for this course…"
         optional
         minHeight={100}
+        rte
         aiField="Target audience for the course"
         courseTitle={form.title}
       />
@@ -426,6 +451,7 @@ function Step3({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
         placeholder="List any knowledge, skills or tools students need before starting…"
         optional
         minHeight={100}
+        rte
         aiField="Course prerequisites"
         courseTitle={form.title}
       />
@@ -603,8 +629,30 @@ function Step4({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
 
 // ─── Step 5: Curriculum ───────────────────────────────────────────────────────
 
-function LessonTypeIcon({ type, color }: { type: LessonType; color: string }) {
-  const props = { size: 14, color, weight: 'regular' as const };
+function makeDefaultQuestion(): QuizQuestion {
+  return {
+    id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    questionType: 'mcq',
+    question: '',
+    options: ['', ''],
+    correctAnswer: 0,
+    correctAnswers: [],
+    shortAnswer: '',
+    explanation: '',
+  };
+}
+
+function makeDefaultLesson(order: number, isFreePreview = false): FormLesson {
+  return {
+    title: '', type: 'VIDEO', content: '', duration: 0,
+    isFreePreview, order, videoUri: null, quizQuestions: [],
+    assignmentDelivery: 'text', assignmentFileUri: null,
+    assignmentFileName: null, resourceFileUri: null, resourceFileName: null,
+  };
+}
+
+function LessonTypeIcon({ type, color, size = 14 }: { type: LessonType; color: string; size?: number }) {
+  const props = { size, color, weight: 'regular' as const };
   switch (type) {
     case 'VIDEO': return <VideoCamera {...props} />;
     case 'ARTICLE': return <Article {...props} />;
@@ -613,63 +661,551 @@ function LessonTypeIcon({ type, color }: { type: LessonType; color: string }) {
   }
 }
 
+// ─── Quiz Question Editor ─────────────────────────────────────────────────────
+
+const QUESTION_TYPES: { value: QuizQuestionType; label: string }[] = [
+  { value: 'mcq', label: 'MCQ' },
+  { value: 'true-false', label: 'True / False' },
+  { value: 'multiple-select', label: 'Multi-Select' },
+  { value: 'short-answer', label: 'Short Answer' },
+];
+
+function QuizQuestionEditor({
+  question, index, onUpdate, onDelete, theme,
+}: {
+  question: QuizQuestion;
+  index: number;
+  onUpdate: (u: Partial<QuizQuestion>) => void;
+  onDelete: () => void;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  function setOption(oi: number, val: string) {
+    const options = [...question.options];
+    options[oi] = val;
+    onUpdate({ options });
+  }
+
+  function addOption() {
+    if (question.options.length >= 6) return;
+    onUpdate({ options: [...question.options, ''] });
+  }
+
+  function removeOption(oi: number) {
+    if (question.options.length <= 2) return;
+    const options = question.options.filter((_, i) => i !== oi);
+    onUpdate({
+      options,
+      correctAnswer: question.correctAnswer >= oi ? Math.max(0, question.correctAnswer - 1) : question.correctAnswer,
+      correctAnswers: question.correctAnswers.filter(ca => ca !== oi).map(ca => ca > oi ? ca - 1 : ca),
+    });
+  }
+
+  function changeType(type: QuizQuestionType) {
+    const base: Partial<QuizQuestion> = { questionType: type };
+    if (type === 'true-false') {
+      base.options = ['True', 'False'];
+      base.correctAnswer = 0;
+      base.correctAnswers = [];
+    } else if (type === 'mcq') {
+      base.options = question.options.length >= 2 ? question.options : ['', ''];
+      base.correctAnswers = [];
+    } else if (type === 'multiple-select') {
+      base.options = question.options.length >= 2 ? question.options : ['', ''];
+      base.correctAnswer = 0;
+    } else {
+      base.options = [];
+      base.correctAnswer = 0;
+      base.correctAnswers = [];
+    }
+    onUpdate(base);
+  }
+
+  return (
+    <View style={[currStyles.qCard, { borderColor: theme.border, backgroundColor: theme.background }]}>
+      <View style={currStyles.qHeader}>
+        <View style={[currStyles.qNum, { backgroundColor: theme.primary }]}>
+          <Text style={currStyles.qNumText}>{index + 1}</Text>
+        </View>
+        <Text style={[currStyles.qLabel, { color: theme.textSecondary }]}>Question {index + 1}</Text>
+        <Pressable onPress={onDelete} hitSlop={8}>
+          <Trash size={15} color={theme.error} weight="regular" />
+        </Pressable>
+      </View>
+
+      <View style={sharedStyles.chipWrap}>
+        {QUESTION_TYPES.map((qt) => {
+          const sel = question.questionType === qt.value;
+          return (
+            <Pressable key={qt.value} onPress={() => changeType(qt.value)}
+              style={[sharedStyles.chip, { borderColor: sel ? theme.primary : theme.border, backgroundColor: sel ? theme.primaryLight : theme.surface }]}>
+              <Text style={[sharedStyles.chipText, { color: sel ? theme.primary : theme.textSecondary }]}>{qt.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <TextInput
+        style={[currStyles.qInput, { borderColor: theme.border, backgroundColor: theme.surface, color: theme.text }]}
+        value={question.question}
+        onChangeText={(v) => onUpdate({ question: v })}
+        placeholder="Question text…"
+        placeholderTextColor={theme.textSecondary}
+        multiline
+      />
+
+      {question.questionType === 'short-answer' ? (
+        <View style={{ gap: 6 }}>
+          <Text style={[currStyles.optLabel, { color: theme.textSecondary }]}>Expected Answer</Text>
+          <TextInput
+            style={[currStyles.qInput, { borderColor: theme.border, backgroundColor: theme.surface, color: theme.text }]}
+            value={question.shortAnswer}
+            onChangeText={(v) => onUpdate({ shortAnswer: v })}
+            placeholder="Model answer…"
+            placeholderTextColor={theme.textSecondary}
+          />
+        </View>
+      ) : (
+        <View style={{ gap: 8 }}>
+          <Text style={[currStyles.optLabel, { color: theme.textSecondary }]}>
+            {question.questionType === 'multiple-select' ? 'Options — tap all correct answers' : 'Options — tap to mark correct'}
+          </Text>
+          {question.options.map((opt, oi) => {
+            const isCorrect = question.questionType === 'multiple-select'
+              ? question.correctAnswers.includes(oi)
+              : question.correctAnswer === oi;
+
+            function toggleCorrect() {
+              if (question.questionType === 'multiple-select') {
+                const ca = isCorrect
+                  ? question.correctAnswers.filter(x => x !== oi)
+                  : [...question.correctAnswers, oi];
+                onUpdate({ correctAnswers: ca });
+              } else {
+                onUpdate({ correctAnswer: oi });
+              }
+            }
+
+            return (
+              <View key={oi} style={currStyles.optRow}>
+                <Pressable onPress={toggleCorrect}
+                  style={[currStyles.optCheck, { borderColor: isCorrect ? theme.primary : theme.border, backgroundColor: isCorrect ? theme.primary : 'transparent' }]}>
+                  {isCorrect && <Check size={10} color="#fff" weight="bold" />}
+                </Pressable>
+                {question.questionType === 'true-false' ? (
+                  <Text style={[currStyles.optText, { color: theme.text }]}>{opt}</Text>
+                ) : (
+                  <TextInput
+                    style={[currStyles.optInput, { borderColor: theme.border, backgroundColor: theme.surface, color: theme.text }]}
+                    value={opt}
+                    onChangeText={(v) => setOption(oi, v)}
+                    placeholder={`Option ${oi + 1}…`}
+                    placeholderTextColor={theme.textSecondary}
+                  />
+                )}
+                {question.questionType !== 'true-false' && question.options.length > 2 && (
+                  <Pressable onPress={() => removeOption(oi)} hitSlop={8}>
+                    <X size={14} color={theme.textSecondary} weight="regular" />
+                  </Pressable>
+                )}
+              </View>
+            );
+          })}
+          {question.questionType !== 'true-false' && question.options.length < 6 && (
+            <Pressable onPress={addOption} style={[currStyles.addOptBtn, { borderColor: theme.border }]}>
+              <Plus size={13} color={theme.primary} weight="regular" />
+              <Text style={[currStyles.addOptText, { color: theme.primary }]}>Add option</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      <View style={{ gap: 6 }}>
+        <Text style={[currStyles.optLabel, { color: theme.textSecondary }]}>Explanation (optional)</Text>
+        <TextInput
+          style={[currStyles.qInput, { borderColor: theme.border, backgroundColor: theme.surface, color: theme.text }]}
+          value={question.explanation}
+          onChangeText={(v) => onUpdate({ explanation: v })}
+          placeholder="Why is this the correct answer?…"
+          placeholderTextColor={theme.textSecondary}
+          multiline
+        />
+      </View>
+    </View>
+  );
+}
+
+// ─── Lesson Editor ────────────────────────────────────────────────────────────
+
+function LessonEditor({
+  lesson, onUpdate, onDelete, theme,
+}: {
+  lesson: FormLesson;
+  onUpdate: (u: Partial<FormLesson>) => void;
+  onDelete: () => void;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
+
+  async function pickVideo() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { Alert.alert('Permission needed', 'Allow photo library access to upload video.'); return; }
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'videos', allowsEditing: false });
+    if (res.canceled || !res.assets[0]) return;
+    const asset = res.assets[0];
+    const durationSec = asset.duration ? Math.round(asset.duration / 1000) : 0;
+    onUpdate({ videoUri: asset.uri, content: '', duration: durationSec });
+    setUploading(true); setUploadPct(0);
+    try {
+      const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'mp4';
+      const mime = asset.mimeType ?? `video/${ext}`;
+      const fsFile = new FSFile(asset.uri);
+      const size = fsFile.size ?? asset.fileSize ?? 0;
+      const { uploadUrl, key } = await presignUpload('lesson-video', `lesson-video.${ext}`, mime, size);
+      await uploadFileToS3(uploadUrl, asset.uri, mime, setUploadPct);
+      onUpdate({ content: key });
+    } catch (e: any) {
+      Alert.alert('Upload failed', e.message ?? 'Could not upload video');
+      onUpdate({ videoUri: null, content: '' });
+    } finally { setUploading(false); }
+  }
+
+  async function pickDocument(folder: 'assignment' | 'resource', uriKey: 'assignmentFileUri' | 'resourceFileUri', nameKey: 'assignmentFileName' | 'resourceFileName') {
+    const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+    if (res.canceled || !res.assets[0]) return;
+    const asset = res.assets[0];
+    onUpdate({ [uriKey]: asset.uri, [nameKey]: asset.name, content: '' } as Partial<FormLesson>);
+    setUploading(true); setUploadPct(0);
+    try {
+      const mime = asset.mimeType ?? 'application/octet-stream';
+      const size = asset.size ?? 0;
+      const { uploadUrl, key } = await presignUpload(folder, asset.name, mime, size);
+      await uploadFileToS3(uploadUrl, asset.uri, mime, setUploadPct);
+      onUpdate({ content: key } as Partial<FormLesson>);
+    } catch (e: any) {
+      Alert.alert('Upload failed', e.message ?? 'Could not upload file');
+      onUpdate({ [uriKey]: null, [nameKey]: null, content: '' } as Partial<FormLesson>);
+    } finally { setUploading(false); }
+  }
+
+  function changeType(type: LessonType) {
+    onUpdate({
+      type, content: '', videoUri: null,
+      quizQuestions: type === 'QUIZ' ? [makeDefaultQuestion()] : lesson.quizQuestions,
+      assignmentDelivery: 'text', assignmentFileUri: null, assignmentFileName: null,
+      resourceFileUri: null, resourceFileName: null,
+    });
+  }
+
+  const durationMin = lesson.duration ? Math.floor(lesson.duration / 60) : 0;
+  const durationSec = lesson.duration ? lesson.duration % 60 : 0;
+  const durationDisplay = lesson.duration ? `${durationMin}:${String(durationSec).padStart(2, '0')}` : '';
+
+  return (
+    <View style={[currStyles.lessonCard, { borderColor: expanded ? theme.primary : theme.border, backgroundColor: theme.surface }]}>
+      {/* Header row */}
+      <Pressable onPress={() => setExpanded(!expanded)} style={currStyles.lessonHeader}>
+        <LessonTypeIcon type={lesson.type} color={expanded ? theme.primary : theme.textSecondary} size={16} />
+        <Text style={[currStyles.lessonHeaderTitle, { color: lesson.title ? theme.text : theme.textSecondary }]} numberOfLines={1}>
+          {lesson.title || 'Untitled lesson'}
+        </Text>
+        <Pressable onPress={onDelete} hitSlop={10} style={{ padding: 4 }}>
+          <Trash size={14} color={theme.error} weight="regular" />
+        </Pressable>
+        {expanded ? <CaretUp size={14} color={theme.textSecondary} /> : <CaretDown size={14} color={theme.textSecondary} />}
+      </Pressable>
+
+      {expanded && (
+        <View style={[currStyles.lessonBody, { borderTopColor: theme.border }]}>
+          {/* Title */}
+          <TextInput
+            style={[currStyles.lessonTitleInput, { borderColor: theme.border, backgroundColor: theme.background, color: theme.text }]}
+            value={lesson.title}
+            onChangeText={(v) => onUpdate({ title: v })}
+            placeholder="Lesson title…"
+            placeholderTextColor={theme.textSecondary}
+          />
+
+          {/* Type chips */}
+          <View style={sharedStyles.chipWrap}>
+            {LESSON_TYPES.map((lt) => {
+              const sel = lesson.type === lt.value;
+              return (
+                <Pressable key={lt.value} onPress={() => changeType(lt.value)}
+                  style={[sharedStyles.chip, { borderColor: sel ? theme.primary : theme.border, backgroundColor: sel ? theme.primaryLight : theme.surface }]}>
+                  <Text style={[sharedStyles.chipText, { color: sel ? theme.primary : theme.textSecondary }]}>{lt.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* ── VIDEO ── */}
+          {lesson.type === 'VIDEO' && (
+            <Pressable onPress={pickVideo} disabled={uploading}
+              style={[currStyles.mediaBox, { borderColor: lesson.videoUri ? theme.primary : theme.border, backgroundColor: theme.background }]}>
+              {lesson.videoUri ? (
+                <View style={{ alignItems: 'center', gap: 6 }}>
+                  <Play size={30} color={lesson.content ? theme.primary : theme.textSecondary} weight="fill" />
+                  <Text style={[currStyles.mediaFileName, { color: theme.text }]} numberOfLines={1}>
+                    {lesson.videoUri.split('/').pop()}
+                  </Text>
+                  {uploading
+                    ? <Text style={[currStyles.mediaPct, { color: theme.primary }]}>Uploading… {uploadPct}%</Text>
+                    : lesson.content
+                      ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Check size={12} color="#2E7D32" weight="bold" />
+                          <Text style={{ fontSize: 12, color: '#2E7D32', fontFamily: Fonts.semiBold }}>Uploaded</Text>
+                        </View>
+                      : null}
+                  {!uploading && <Text style={[currStyles.mediaTapChange, { color: theme.textSecondary }]}>Tap to change</Text>}
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', gap: 8 }}>
+                  <VideoCamera size={32} color={theme.border} weight="regular" />
+                  <Text style={[currStyles.mediaPrompt, { color: theme.textSecondary }]}>Tap to upload video</Text>
+                  <Text style={[currStyles.mediaHint, { color: theme.textSecondary }]}>MP4 or MOV, max 1GB</Text>
+                </View>
+              )}
+              {uploading && (
+                <View style={currStyles.mediaOverlay}>
+                  <ActivityIndicator color="#fff" />
+                  <Text style={currStyles.mediaOverlayText}>{uploadPct}%</Text>
+                </View>
+              )}
+            </Pressable>
+          )}
+
+          {/* ── ARTICLE ── */}
+          {lesson.type === 'ARTICLE' && (
+            <RichField
+              label="Article Content"
+              value={lesson.content}
+              onChangeText={(v) => onUpdate({ content: v })}
+              placeholder="Write the article content here…"
+              required
+              minHeight={180}
+              rte
+              aiField="Article lesson content"
+              courseTitle=""
+            />
+          )}
+
+          {/* ── QUIZ ── */}
+          {lesson.type === 'QUIZ' && (
+            <View style={{ gap: 12 }}>
+              {lesson.quizQuestions.length === 0 && (
+                <Text style={[currStyles.emptyHint, { color: theme.textSecondary }]}>No questions yet. Add one below.</Text>
+              )}
+              {lesson.quizQuestions.map((q, qi) => (
+                <QuizQuestionEditor
+                  key={q.id}
+                  question={q}
+                  index={qi}
+                  theme={theme}
+                  onUpdate={(u) => {
+                    const qs = [...lesson.quizQuestions];
+                    qs[qi] = { ...qs[qi], ...u };
+                    onUpdate({ quizQuestions: qs });
+                  }}
+                  onDelete={() => onUpdate({ quizQuestions: lesson.quizQuestions.filter((_, i) => i !== qi) })}
+                />
+              ))}
+              <Pressable
+                onPress={() => onUpdate({ quizQuestions: [...lesson.quizQuestions, makeDefaultQuestion()] })}
+                style={[currStyles.addQuestionBtn, { borderColor: theme.border }]}
+              >
+                <Plus size={14} color={theme.primary} weight="regular" />
+                <Text style={[currStyles.addQuestionText, { color: theme.primary }]}>Add Question</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* ── ASSIGNMENT ── */}
+          {lesson.type === 'ASSIGNMENT' && (
+            <View style={{ gap: 12 }}>
+              <View style={sharedStyles.chipWrap}>
+                {[{ value: 'text', label: 'Text Instructions' }, { value: 'file', label: 'File Upload' }].map((d) => {
+                  const sel = lesson.assignmentDelivery === d.value;
+                  return (
+                    <Pressable key={d.value}
+                      onPress={() => onUpdate({ assignmentDelivery: d.value as 'text' | 'file', content: '', assignmentFileUri: null, assignmentFileName: null })}
+                      style={[sharedStyles.chip, { borderColor: sel ? theme.primary : theme.border, backgroundColor: sel ? theme.primaryLight : theme.surface }]}>
+                      <Text style={[sharedStyles.chipText, { color: sel ? theme.primary : theme.textSecondary }]}>{d.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {lesson.assignmentDelivery === 'text' ? (
+                <RichField
+                  label="Assignment Instructions"
+                  value={lesson.content}
+                  onChangeText={(v) => onUpdate({ content: v })}
+                  placeholder="Describe what students need to do…"
+                  required
+                  minHeight={140}
+                  rte
+                  aiField="Assignment instructions"
+                  courseTitle=""
+                />
+              ) : (
+                <Pressable onPress={() => pickDocument('assignment', 'assignmentFileUri', 'assignmentFileName')} disabled={uploading}
+                  style={[currStyles.mediaBox, { borderColor: lesson.assignmentFileUri ? theme.primary : theme.border, backgroundColor: theme.background }]}>
+                  {lesson.assignmentFileUri ? (
+                    <View style={{ alignItems: 'center', gap: 6 }}>
+                      <Paperclip size={28} color={lesson.content ? theme.primary : theme.textSecondary} weight="regular" />
+                      <Text style={[currStyles.mediaFileName, { color: theme.text }]} numberOfLines={1}>{lesson.assignmentFileName}</Text>
+                      {uploading
+                        ? <Text style={[currStyles.mediaPct, { color: theme.primary }]}>Uploading… {uploadPct}%</Text>
+                        : lesson.content
+                          ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                              <Check size={12} color="#2E7D32" weight="bold" />
+                              <Text style={{ fontSize: 12, color: '#2E7D32', fontFamily: Fonts.semiBold }}>Uploaded</Text>
+                            </View>
+                          : null}
+                      {!uploading && <Text style={[currStyles.mediaTapChange, { color: theme.textSecondary }]}>Tap to change</Text>}
+                    </View>
+                  ) : (
+                    <View style={{ alignItems: 'center', gap: 8 }}>
+                      <Paperclip size={32} color={theme.border} weight="regular" />
+                      <Text style={[currStyles.mediaPrompt, { color: theme.textSecondary }]}>Tap to upload file</Text>
+                      <Text style={[currStyles.mediaHint, { color: theme.textSecondary }]}>PDF, DOC, ZIP up to 50MB</Text>
+                    </View>
+                  )}
+                  {uploading && (
+                    <View style={currStyles.mediaOverlay}>
+                      <ActivityIndicator color="#fff" />
+                      <Text style={currStyles.mediaOverlayText}>{uploadPct}%</Text>
+                    </View>
+                  )}
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* ── RESOURCE ── */}
+          {lesson.type === 'RESOURCE' && (
+            <View style={{ gap: 12 }}>
+              <Pressable onPress={() => pickDocument('resource', 'resourceFileUri', 'resourceFileName')} disabled={uploading}
+                style={[currStyles.mediaBox, { borderColor: lesson.resourceFileUri ? theme.primary : theme.border, backgroundColor: theme.background }]}>
+                {lesson.resourceFileUri ? (
+                  <View style={{ alignItems: 'center', gap: 6 }}>
+                    <Paperclip size={28} color={lesson.content ? theme.primary : theme.textSecondary} weight="regular" />
+                    <Text style={[currStyles.mediaFileName, { color: theme.text }]} numberOfLines={1}>{lesson.resourceFileName}</Text>
+                    {uploading
+                      ? <Text style={[currStyles.mediaPct, { color: theme.primary }]}>Uploading… {uploadPct}%</Text>
+                      : lesson.content
+                        ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Check size={12} color="#2E7D32" weight="bold" />
+                            <Text style={{ fontSize: 12, color: '#2E7D32', fontFamily: Fonts.semiBold }}>Uploaded</Text>
+                          </View>
+                        : null}
+                    {!uploading && <Text style={[currStyles.mediaTapChange, { color: theme.textSecondary }]}>Tap to change</Text>}
+                  </View>
+                ) : (
+                  <View style={{ alignItems: 'center', gap: 8 }}>
+                    <Paperclip size={32} color={theme.border} weight="regular" />
+                    <Text style={[currStyles.mediaPrompt, { color: theme.textSecondary }]}>Tap to add resource file</Text>
+                    <Text style={[currStyles.mediaHint, { color: theme.textSecondary }]}>PDF, DOC, ZIP up to 50MB</Text>
+                  </View>
+                )}
+                {uploading && (
+                  <View style={currStyles.mediaOverlay}>
+                    <ActivityIndicator color="#fff" />
+                    <Text style={currStyles.mediaOverlayText}>{uploadPct}%</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+          )}
+
+          {/* Duration */}
+          {lesson.type !== 'RESOURCE' && (
+            <View style={currStyles.durationRow}>
+              <Text style={[currStyles.durationLabel, { color: theme.textSecondary }]}>
+                {lesson.type === 'VIDEO' && lesson.duration > 0 ? 'Duration (auto-detected)' : 'Duration (minutes)'}
+              </Text>
+              {lesson.type === 'VIDEO' && lesson.duration > 0 ? (
+                <Text style={[currStyles.durationValue, { color: theme.text }]}>{durationDisplay}</Text>
+              ) : (
+                <TextInput
+                  style={[currStyles.durationInput, { borderColor: theme.border, backgroundColor: theme.background, color: theme.text }]}
+                  value={durationMin > 0 ? String(durationMin) : ''}
+                  onChangeText={(v) => onUpdate({ duration: (parseFloat(v) || 0) * 60 })}
+                  placeholder="0"
+                  keyboardType="decimal-pad"
+                  placeholderTextColor={theme.textSecondary}
+                />
+              )}
+            </View>
+          )}
+
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Step5 ────────────────────────────────────────────────────────────────────
+
 function Step5({ form, update }: { form: CourseForm; update: (u: Partial<CourseForm>) => void }) {
   const theme = useTheme();
-  const [expandedSection, setExpandedSection] = useState<number>(0);
-  const [addingLessonTo, setAddingLessonTo] = useState<number | null>(null);
-  const [newLessonTitle, setNewLessonTitle] = useState('');
-  const [newLessonType, setNewLessonType] = useState<LessonType>('VIDEO');
   const [editingSectionIdx, setEditingSectionIdx] = useState<number | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
 
-  function addSection() {
-    const next = [...form.sections, {
-      title: `Section ${form.sections.length + 1}`,
-      description: '', order: form.sections.length, lessons: [],
-    }];
-    update({ sections: next });
-    setExpandedSection(next.length - 1);
+  function updateLesson(si: number, li: number, changes: Partial<FormLesson>) {
+    const sections = [...form.sections];
+    const sec = { ...sections[si] };
+    const lessons = [...sec.lessons];
+    lessons[li] = { ...lessons[li], ...changes };
+    sec.lessons = lessons;
+    sections[si] = sec;
+    update({ sections });
   }
 
-  function deleteSection(idx: number) {
-    Alert.alert('Delete Section', `Remove "${form.sections[idx].title}" and all its lessons?`, [
+  function addLesson(si: number) {
+    const sections = [...form.sections];
+    const sec = { ...sections[si] };
+    sec.lessons = [...sec.lessons, makeDefaultLesson(sec.lessons.length, sec.lessons.length === 0)];
+    sections[si] = sec;
+    update({ sections });
+  }
+
+  function deleteLesson(si: number, li: number) {
+    Alert.alert('Delete Lesson', 'Remove this lesson?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive', onPress: () => {
-          const next = form.sections.filter((_, i) => i !== idx).map((s, i) => ({ ...s, order: i }));
-          update({ sections: next });
-          if (expandedSection >= next.length) setExpandedSection(Math.max(0, next.length - 1));
+          const sections = [...form.sections];
+          const sec = { ...sections[si] };
+          sec.lessons = sec.lessons.filter((_, i) => i !== li).map((l, i) => ({ ...l, order: i }));
+          sections[si] = sec;
+          update({ sections });
         },
       },
     ]);
   }
 
-  function addLesson(sectionIdx: number) {
-    if (!newLessonTitle.trim()) return;
-    const sections = [...form.sections];
-    const sec = { ...sections[sectionIdx] };
-    sec.lessons = [...sec.lessons, {
-      title: newLessonTitle.trim(), type: newLessonType,
-      content: '', duration: 0, isFreePreview: sec.lessons.length === 0, order: sec.lessons.length,
-    }];
-    sections[sectionIdx] = sec;
-    update({ sections });
-    setNewLessonTitle('');
-    setAddingLessonTo(null);
+  function addSection() {
+    const next = [...form.sections, { title: `Section ${form.sections.length + 1}`, description: '', order: form.sections.length, lessons: [] }];
+    update({ sections: next });
   }
 
-  function deleteLesson(sectionIdx: number, lessonIdx: number) {
-    const sections = [...form.sections];
-    const sec = { ...sections[sectionIdx] };
-    sec.lessons = sec.lessons.filter((_, i) => i !== lessonIdx).map((l, i) => ({ ...l, order: i }));
-    sections[sectionIdx] = sec;
-    update({ sections });
+  function deleteSection(si: number) {
+    Alert.alert('Delete Section', `Remove "${form.sections[si].title}" and all its lessons?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: () => {
+          update({ sections: form.sections.filter((_, i) => i !== si).map((s, i) => ({ ...s, order: i })) });
+        },
+      },
+    ]);
   }
 
-  function saveSectionTitle(idx: number) {
+  function saveSectionTitle(si: number) {
     if (!editingSectionTitle.trim()) return;
     const sections = [...form.sections];
-    sections[idx] = { ...sections[idx], title: editingSectionTitle.trim() };
+    sections[si] = { ...sections[si], title: editingSectionTitle.trim() };
     update({ sections });
     setEditingSectionIdx(null);
   }
@@ -680,110 +1216,58 @@ function Step5({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
         Organise your content into sections. Each section contains lessons students complete in order.
       </Text>
 
-      {form.sections.map((section, si) => {
-        const expanded = expandedSection === si;
-        return (
-          <View key={si} style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            {/* Section header */}
-            <Pressable
-              style={[styles.sectionHeader, { borderBottomColor: theme.border, borderBottomWidth: expanded ? StyleSheet.hairlineWidth : 0 }]}
-              onPress={() => setExpandedSection(expanded ? -1 : si)}
-            >
-              <View style={[styles.sectionNum, { backgroundColor: theme.primary }]}>
-                <Text style={styles.sectionNumText}>{si + 1}</Text>
-              </View>
-              {editingSectionIdx === si ? (
-                <TextInput
-                  style={[styles.sectionTitleInput, { color: theme.text, borderColor: theme.primary }]}
-                  value={editingSectionTitle}
-                  onChangeText={setEditingSectionTitle}
-                  onBlur={() => saveSectionTitle(si)}
-                  onSubmitEditing={() => saveSectionTitle(si)}
-                  autoFocus
-                />
-              ) : (
-                <Text style={[styles.sectionTitle, { color: theme.text }]} numberOfLines={1}>{section.title}</Text>
-              )}
-              <View style={styles.sectionMeta}>
-                <Text style={[styles.sectionLessonCount, { color: theme.textSecondary }]}>{section.lessons.length} lesson{section.lessons.length !== 1 ? 's' : ''}</Text>
-                <Pressable onPress={() => { setEditingSectionTitle(section.title); setEditingSectionIdx(si); }} hitSlop={8}>
-                  <Text style={[styles.sectionEditBtn, { color: theme.primary }]}>Edit</Text>
-                </Pressable>
-                {form.sections.length > 1 && (
-                  <Pressable onPress={() => deleteSection(si)} hitSlop={8}>
-                    <Trash size={15} color={theme.error} weight="regular" />
-                  </Pressable>
-                )}
-              </View>
-            </Pressable>
-
-            {/* Lessons */}
-            {expanded && (
-              <View>
-                {section.lessons.map((lesson, li) => (
-                  <View key={li} style={[styles.lessonRow, { borderBottomColor: theme.border }]}>
-                    <LessonTypeIcon type={lesson.type} color={theme.textSecondary} />
-                    <Text style={[styles.lessonTitle, { color: theme.text }]} numberOfLines={1}>{lesson.title}</Text>
-                    {lesson.isFreePreview && (
-                      <View style={[styles.freeTag, { backgroundColor: theme.primaryLight }]}>
-                        <Text style={[styles.freeTagText, { color: theme.primary }]}>Free</Text>
-                      </View>
-                    )}
-                    <Pressable onPress={() => deleteLesson(si, li)} hitSlop={8}>
-                      <Trash size={14} color={theme.error} weight="regular" />
-                    </Pressable>
-                  </View>
-                ))}
-
-                {/* Add lesson row */}
-                {addingLessonTo === si ? (
-                  <View style={[styles.addLessonForm, { borderTopColor: theme.border }]}>
-                    <View style={sharedStyles.chipWrap}>
-                      {LESSON_TYPES.map((t) => {
-                        const sel = newLessonType === t.value;
-                        return (
-                          <Pressable
-                            key={t.value}
-                            onPress={() => setNewLessonType(t.value)}
-                            style={[styles.typeChip, { borderColor: sel ? theme.primary : theme.border, backgroundColor: sel ? theme.primaryLight : theme.surface }]}
-                          >
-                            <Text style={[styles.typeChipText, { color: sel ? theme.primary : theme.textSecondary }]}>{t.label}</Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                    <View style={styles.addLessonRow}>
-                      <TextInput
-                        style={[styles.addLessonInput, { borderColor: theme.border, backgroundColor: theme.background, color: theme.text }]}
-                        value={newLessonTitle}
-                        onChangeText={setNewLessonTitle}
-                        placeholder="Lesson title…"
-                        placeholderTextColor={theme.textSecondary}
-                        returnKeyType="done"
-                        onSubmitEditing={() => addLesson(si)}
-                      />
-                      <Pressable onPress={() => addLesson(si)} style={[styles.addLessonBtn, { backgroundColor: theme.primary }]}>
-                        <Text style={styles.addLessonBtnText}>Add</Text>
-                      </Pressable>
-                      <Pressable onPress={() => setAddingLessonTo(null)} style={[styles.cancelLessonBtn, { backgroundColor: theme.surfaceEl }]}>
-                        <Text style={[styles.cancelLessonBtnText, { color: theme.textSecondary }]}>Cancel</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : (
-                  <Pressable
-                    onPress={() => { setAddingLessonTo(si); setNewLessonTitle(''); setNewLessonType('VIDEO'); }}
-                    style={[styles.addLessonTrigger, { borderTopColor: theme.border }]}
-                  >
-                    <Plus size={14} color={theme.primary} weight="regular" />
-                    <Text style={[styles.addLessonTriggerText, { color: theme.primary }]}>Add Lesson</Text>
-                  </Pressable>
-                )}
-              </View>
+      {form.sections.map((section, si) => (
+        <View key={si} style={[currStyles.sectionWrap, { borderColor: theme.border, backgroundColor: theme.background }]}>
+          {/* Section header */}
+          <View style={[currStyles.sectionHead, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+            <View style={[currStyles.sectionNum, { backgroundColor: theme.primary }]}>
+              <Text style={currStyles.sectionNumText}>{si + 1}</Text>
+            </View>
+            {editingSectionIdx === si ? (
+              <TextInput
+                style={[currStyles.sectionTitleInput, { color: theme.text, borderColor: theme.primary, flex: 1 }]}
+                value={editingSectionTitle}
+                onChangeText={setEditingSectionTitle}
+                onBlur={() => saveSectionTitle(si)}
+                onSubmitEditing={() => saveSectionTitle(si)}
+                autoFocus
+              />
+            ) : (
+              <Text style={[currStyles.sectionTitle, { color: theme.text }]} numberOfLines={1}>{section.title}</Text>
             )}
+            <View style={currStyles.sectionActions}>
+              <Text style={[currStyles.lessonCount, { color: theme.textSecondary }]}>
+                {section.lessons.length} lesson{section.lessons.length !== 1 ? 's' : ''}
+              </Text>
+              <Pressable hitSlop={8} onPress={() => { setEditingSectionTitle(section.title); setEditingSectionIdx(si); }}>
+                <Text style={[currStyles.editBtn, { color: theme.primary }]}>Edit</Text>
+              </Pressable>
+              {form.sections.length > 1 && (
+                <Pressable hitSlop={8} onPress={() => deleteSection(si)}>
+                  <Trash size={15} color={theme.error} weight="regular" />
+                </Pressable>
+              )}
+            </View>
           </View>
-        );
-      })}
+
+          {/* Lessons */}
+          <View style={currStyles.lessonsWrap}>
+            {section.lessons.map((lesson, li) => (
+              <LessonEditor
+                key={`${si}-${li}`}
+                lesson={lesson}
+                theme={theme}
+                onUpdate={(changes) => updateLesson(si, li, changes)}
+                onDelete={() => deleteLesson(si, li)}
+              />
+            ))}
+            <Pressable onPress={() => addLesson(si)} style={[currStyles.addLessonBtn, { borderColor: theme.border }]}>
+              <Plus size={14} color={theme.primary} weight="regular" />
+              <Text style={[currStyles.addLessonText, { color: theme.primary }]}>Add Lesson</Text>
+            </Pressable>
+          </View>
+        </View>
+      ))}
 
       <Pressable onPress={addSection} style={[styles.addSectionBtn, { borderColor: theme.border }]}>
         <Plus size={16} color={theme.primary} weight="regular" />
@@ -1012,6 +1496,7 @@ function Step7({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
         placeholder="List any tools, hardware or accounts students need to take this course…"
         optional
         minHeight={100}
+        rte
         aiField="Course requirements and tools needed"
         courseTitle={form.title}
       />
@@ -1073,6 +1558,20 @@ function buildPayload(form: CourseForm) {
         duration: l.duration,
         isFreePreview: l.isFreePreview,
         order: li,
+        quizQuestions: l.type === 'QUIZ' ? l.quizQuestions.map((q, qi) => ({
+          id: q.id,
+          question: q.question,
+          options: q.questionType === 'short-answer'
+            ? { type: 'short-answer', answer: q.shortAnswer }
+            : q.questionType === 'multiple-select'
+            ? { type: 'multiple-select', choices: q.options, correctAnswers: q.correctAnswers }
+            : q.questionType === 'true-false'
+            ? { type: 'true-false', choices: ['True', 'False'] }
+            : { type: 'mcq', choices: q.options },
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation,
+          order: qi,
+        })) : [],
       })),
     })),
     isFree: form.isFree,
@@ -1192,7 +1691,7 @@ export default function CreateCourse() {
         courseId = res.id;
       } else {
         await tutorApiRequest(`/api/courses/${courseId}`, { method: 'PUT', body: payload });
-        await tutorApiRequest(`/api/courses/${courseId}/publish`, { method: 'POST' });
+        await tutorApiRequest(`/api/courses/${courseId}/publish`, { method: 'POST', body: { action: 'publish' } });
       }
       router.replace({ pathname: '/tutor-course/[id]/edit', params: { id: courseId! } });
     } catch (e: any) {
@@ -1283,7 +1782,7 @@ export default function CreateCourse() {
               : (
                 <>
                   <Text style={styles.continueBtnText}>
-                    {isLastStep ? 'Submit for Review' : 'Continue'}
+                    {isLastStep ? 'Publish Course' : 'Continue'}
                   </Text>
                   {!isLastStep && <ArrowRight size={16} color="#fff" weight="bold" />}
                 </>
@@ -1439,4 +1938,72 @@ const styles = StyleSheet.create({
   backBtnText: { fontSize: 14, fontFamily: Fonts.semiBold },
   continueBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 14, borderRadius: 12 },
   continueBtnText: { fontSize: 15, fontFamily: Fonts.bold, color: '#fff' },
+});
+
+// ─── Curriculum styles ────────────────────────────────────────────────────────
+
+const currStyles = StyleSheet.create({
+  // Section
+  sectionWrap: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, overflow: 'hidden', marginBottom: 0 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  sectionNum: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  sectionNumText: { fontSize: 12, fontFamily: Fonts.bold, color: '#fff' },
+  sectionTitle: { flex: 1, fontSize: 14, fontFamily: Fonts.semiBold },
+  sectionTitleInput: { fontSize: 14, fontFamily: Fonts.semiBold, borderBottomWidth: 1, paddingVertical: 2 },
+  sectionActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  lessonCount: { fontSize: 11, fontFamily: Fonts.regular },
+  editBtn: { fontSize: 12, fontFamily: Fonts.semiBold },
+
+  // Lessons container
+  lessonsWrap: { padding: 10, gap: 8 },
+  addLessonBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingVertical: 10, borderStyle: 'dashed' },
+  addLessonText: { fontSize: 13, fontFamily: Fonts.semiBold },
+
+  // Lesson card
+  lessonCard: { borderWidth: 1, borderRadius: 12, overflow: 'hidden' },
+  lessonHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
+  lessonHeaderTitle: { flex: 1, fontSize: 13, fontFamily: Fonts.medium },
+  freeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  freeBadgeText: { fontSize: 10, fontFamily: Fonts.bold },
+  lessonBody: { borderTopWidth: StyleSheet.hairlineWidth, padding: 12, gap: 14 },
+  lessonTitleInput: { height: 42, borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 12, fontSize: 14, fontFamily: Fonts.regular },
+  emptyHint: { fontSize: 13, fontFamily: Fonts.regular, textAlign: 'center', paddingVertical: 8 },
+
+  // Media upload box
+  mediaBox: { borderWidth: 1, borderRadius: 10, borderStyle: 'dashed', height: 160, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  mediaFileName: { fontSize: 12, fontFamily: Fonts.medium, maxWidth: 240, textAlign: 'center' },
+  mediaPct: { fontSize: 12, fontFamily: Fonts.semiBold },
+  mediaTapChange: { fontSize: 11, fontFamily: Fonts.regular },
+  mediaPrompt: { fontSize: 14, fontFamily: Fonts.medium },
+  mediaHint: { fontSize: 12, fontFamily: Fonts.regular },
+  mediaOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  mediaOverlayText: { color: '#fff', fontSize: 14, fontFamily: Fonts.bold },
+
+  // Duration row
+  durationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  durationLabel: { fontSize: 13, fontFamily: Fonts.medium, flex: 1 },
+  durationValue: { fontSize: 13, fontFamily: Fonts.semiBold },
+  durationInput: { width: 70, height: 36, borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 10, fontSize: 14, fontFamily: Fonts.semiBold, textAlign: 'center' },
+
+  // Free preview row
+  previewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
+  previewLabel: { fontSize: 13, fontFamily: Fonts.semiBold },
+  previewDesc: { fontSize: 11, fontFamily: Fonts.regular },
+
+  // Quiz question card
+  qCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, padding: 12, gap: 10 },
+  qHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  qNum: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  qNumText: { fontSize: 11, fontFamily: Fonts.bold, color: '#fff' },
+  qLabel: { flex: 1, fontSize: 12, fontFamily: Fonts.regular },
+  qInput: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, fontFamily: Fonts.regular, minHeight: 44 },
+  optLabel: { fontSize: 12, fontFamily: Fonts.medium },
+  optRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  optCheck: { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  optText: { flex: 1, fontSize: 13, fontFamily: Fonts.regular },
+  optInput: { flex: 1, height: 36, borderWidth: StyleSheet.hairlineWidth, borderRadius: 6, paddingHorizontal: 10, fontSize: 13, fontFamily: Fonts.regular },
+  addOptBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: StyleSheet.hairlineWidth, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'flex-start' },
+  addOptText: { fontSize: 12, fontFamily: Fonts.semiBold },
+  addQuestionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingVertical: 10, borderStyle: 'dashed' },
+  addQuestionText: { fontSize: 13, fontFamily: Fonts.semiBold },
 });
