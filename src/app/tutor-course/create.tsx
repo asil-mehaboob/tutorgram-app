@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   X, ArrowLeft, ArrowRight, Check, BookOpen, VideoCamera,
   Article, ListChecks, Paperclip, Trash, Plus, Image as ImageIcon,
-  CurrencyInr, Tag, WarningCircle,
+  CurrencyInr, Tag, WarningCircle, Play,
 } from 'phosphor-react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
@@ -74,6 +74,7 @@ type CourseForm = {
   thumbnailKey: string | null;
   thumbnailUri: string | null;
   promoVideoUrl: string;
+  promoVideoUri: string | null;
   sections: FormSection[];
   isFree: boolean;
   price: string;
@@ -92,7 +93,7 @@ const INITIAL_FORM: CourseForm = {
   level: 'ALL_LEVELS', language: 'English',
   shortDescription: '', detailedDescription: '',
   whatYouLearn: '', whoIsFor: '', prerequisites: '', learningOutcomes: '',
-  thumbnailKey: null, thumbnailUri: null, promoVideoUrl: '',
+  thumbnailKey: null, thumbnailUri: null, promoVideoUrl: '', promoVideoUri: null,
   sections: [{
     title: 'Introduction', description: '', order: 0,
     lessons: [{ title: 'Getting Started', type: 'VIDEO', content: '', duration: 0, isFreePreview: true, order: 0 }],
@@ -436,8 +437,10 @@ function Step3({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
 
 function Step4({ form, update }: { form: CourseForm; update: (u: Partial<CourseForm>) => void }) {
   const theme = useTheme();
-  const [uploading, setUploading] = useState(false);
-  const [uploadPct, setUploadPct] = useState(0);
+  const [thumbUploading, setThumbUploading] = useState(false);
+  const [thumbPct, setThumbPct] = useState(0);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoPct, setVideoPct] = useState(0);
 
   async function pickThumbnail() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -454,21 +457,53 @@ function Step4({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
     update({ thumbnailUri: asset.uri, thumbnailKey: null });
-    setUploading(true);
-    setUploadPct(0);
+    setThumbUploading(true);
+    setThumbPct(0);
     try {
       const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
       const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
       const fsFile = new FSFile(asset.uri);
       const size = fsFile.size ?? asset.fileSize ?? 0;
       const { uploadUrl, key } = await presignUpload('thumbnail', `thumbnail.${ext}`, mime, size);
-      await uploadFileToS3(uploadUrl, asset.uri, mime, setUploadPct);
+      await uploadFileToS3(uploadUrl, asset.uri, mime, setThumbPct);
       update({ thumbnailKey: key });
     } catch (e: any) {
       Alert.alert('Upload failed', e.message ?? 'Could not upload thumbnail');
       update({ thumbnailUri: null, thumbnailKey: null });
     } finally {
-      setUploading(false);
+      setThumbUploading(false);
+    }
+  }
+
+  async function pickPromoVideo() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Allow photo library access to upload a promo video.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'videos',
+      allowsEditing: false,
+      videoMaxDuration: 300,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    update({ promoVideoUri: asset.uri, promoVideoUrl: '' });
+    setVideoUploading(true);
+    setVideoPct(0);
+    try {
+      const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'mp4';
+      const mime = asset.mimeType ?? `video/${ext}`;
+      const fsFile = new FSFile(asset.uri);
+      const size = fsFile.size ?? asset.fileSize ?? 0;
+      const { uploadUrl, key } = await presignUpload('promo-video', `promo-video.${ext}`, mime, size);
+      await uploadFileToS3(uploadUrl, asset.uri, mime, setVideoPct);
+      update({ promoVideoUrl: key });
+    } catch (e: any) {
+      Alert.alert('Upload failed', e.message ?? 'Could not upload promo video');
+      update({ promoVideoUri: null, promoVideoUrl: '' });
+    } finally {
+      setVideoUploading(false);
     }
   }
 
@@ -481,19 +516,19 @@ function Step4({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
 
       <Pressable
         onPress={pickThumbnail}
-        disabled={uploading}
+        disabled={thumbUploading}
         style={[styles.thumbBox, { borderColor: form.thumbnailUri ? theme.primary : theme.border, backgroundColor: theme.surface }]}
       >
         {form.thumbnailUri ? (
           <>
             <Image source={{ uri: form.thumbnailUri }} style={styles.thumbPreview} contentFit="cover" />
-            {uploading && (
+            {thumbUploading && (
               <View style={styles.thumbOverlay}>
                 <ActivityIndicator color="#fff" />
-                <Text style={styles.thumbOverlayText}>{uploadPct}%</Text>
+                <Text style={styles.thumbOverlayText}>{thumbPct}%</Text>
               </View>
             )}
-            {!uploading && (
+            {!thumbUploading && (
               <View style={styles.thumbChangeBadge}>
                 <Text style={styles.thumbChangeBadgeText}>Tap to change</Text>
               </View>
@@ -508,26 +543,60 @@ function Step4({ form, update }: { form: CourseForm; update: (u: Partial<CourseF
         )}
       </Pressable>
 
-      {form.thumbnailKey && !uploading && (
+      {form.thumbnailKey && !thumbUploading && (
         <View style={[styles.uploadedBadge, { backgroundColor: '#E8F5E9' }]}>
           <Check size={14} color="#2E7D32" weight="bold" />
-          <Text style={[styles.uploadedBadgeText, { color: '#2E7D32' }]}>Uploaded successfully</Text>
+          <Text style={[styles.uploadedBadgeText, { color: '#2E7D32' }]}>Thumbnail uploaded</Text>
         </View>
       )}
 
       <SectionDivider theme={theme} />
 
-      <Input
-        label="Promo Video URL"
-        value={form.promoVideoUrl}
-        onChangeText={(v) => update({ promoVideoUrl: v })}
-        placeholder="https://youtube.com/... or direct video URL"
-        autoCapitalize="none"
-        keyboardType="url"
-      />
+      <FieldLabel text="Promo Video" optional theme={theme} />
       <Text style={[styles.fieldHint, { color: theme.textSecondary }]}>
-        A short preview video helps attract students. Optional.
+        A short preview video helps attract students. Max 5 minutes.
       </Text>
+
+      <Pressable
+        onPress={pickPromoVideo}
+        disabled={videoUploading}
+        style={[styles.thumbBox, { borderColor: form.promoVideoUri ? theme.primary : theme.border, backgroundColor: theme.surface }]}
+      >
+        {form.promoVideoUri ? (
+          <>
+            <View style={[styles.thumbEmpty, { backgroundColor: theme.surfaceEl }]}>
+              <Play size={36} color={form.promoVideoUrl ? theme.primary : theme.textSecondary} weight="fill" />
+              <Text style={[styles.thumbEmptyText, { color: form.promoVideoUrl ? theme.primary : theme.textSecondary }]} numberOfLines={1}>
+                {form.promoVideoUri.split('/').pop()}
+              </Text>
+            </View>
+            {videoUploading && (
+              <View style={styles.thumbOverlay}>
+                <ActivityIndicator color="#fff" />
+                <Text style={styles.thumbOverlayText}>{videoPct}%</Text>
+              </View>
+            )}
+            {!videoUploading && (
+              <View style={styles.thumbChangeBadge}>
+                <Text style={styles.thumbChangeBadgeText}>Tap to change</Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <View style={styles.thumbEmpty}>
+            <VideoCamera size={36} color={theme.border} weight="regular" />
+            <Text style={[styles.thumbEmptyText, { color: theme.textSecondary }]}>Tap to upload promo video</Text>
+            <Text style={[styles.thumbEmptyHint, { color: theme.textSecondary }]}>MP4 or MOV, max 1GB</Text>
+          </View>
+        )}
+      </Pressable>
+
+      {form.promoVideoUrl && !videoUploading && (
+        <View style={[styles.uploadedBadge, { backgroundColor: '#E8F5E9' }]}>
+          <Check size={14} color="#2E7D32" weight="bold" />
+          <Text style={[styles.uploadedBadgeText, { color: '#2E7D32' }]}>Promo video uploaded</Text>
+        </View>
+      )}
     </View>
   );
 }
