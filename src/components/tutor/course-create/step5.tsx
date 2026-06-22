@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { File as FSFile } from 'expo-file-system';
+import { File } from 'expo-file-system';
 import {
   Article, CaretDown, CaretUp, Check, ListChecks, Paperclip,
   Play, Plus, Trash, VideoCamera, X,
@@ -10,7 +10,8 @@ import {
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { RichField } from '@/components/tutor/rich-field';
-import { presignUpload, uploadFileToS3 } from '@/lib/api/tutor-upload';
+import { tutorApiRequest } from '@/lib/api/tutor-client';
+import { presignUpload, uploadFileToS3, uploadVideo } from '@/lib/api/tutor-upload';
 import { shared } from './shared';
 import { LESSON_TYPES } from './constants';
 import type { CourseForm, FormLesson, LessonType, QuizQuestion, QuizQuestionType } from './types';
@@ -227,11 +228,12 @@ function QuizQuestionEditor({
 // ─── Lesson editor ────────────────────────────────────────────────────────────
 
 function LessonEditor({
-  lesson, onUpdate, onDelete, theme,
+  lesson, onUpdate, onDelete, onEnsureLessonId, theme,
 }: {
   lesson: FormLesson;
   onUpdate: (u: Partial<FormLesson>) => void;
   onDelete: () => void;
+  onEnsureLessonId: () => Promise<string>;
   theme: ReturnType<typeof useTheme>;
 }) {
   const [expanded, setExpanded] = useState(true);
@@ -250,12 +252,25 @@ function LessonEditor({
     try {
       const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'mp4';
       const mime = asset.mimeType ?? `video/${ext}`;
-      const fsFile = new FSFile(asset.uri);
-      const size = fsFile.size ?? asset.fileSize ?? 0;
-      const { uploadUrl, key } = await presignUpload('lesson-video', `lesson-video.${ext}`, mime, size);
-      await uploadFileToS3(uploadUrl, asset.uri, mime, setUploadPct);
+      const file = new File(asset.uri);
+      const size = file.size > 0 ? file.size : (asset.fileSize ?? 0);
+
+      // Mirror web flow: save draft first to get a real DB lesson ID before uploading.
+      // lesson.id is already set when editing an existing lesson.
+      const lessonId = lesson.id ?? await onEnsureLessonId();
+      console.log('[lesson-video] uploading: mime:', mime, 'size:', size, 'lessonId:', lessonId);
+
+      const key = await uploadVideo('lesson-video', `lesson-video.${ext}`, asset.uri, mime, size, lessonId, setUploadPct);
+      console.log('[lesson-video] upload complete, key:', key);
       onUpdate({ content: key });
+
+      // Trigger transcode immediately after upload — mirrors web app behaviour.
+      tutorApiRequest('/api/upload/transcode', {
+        method: 'POST',
+        body: { lessonId, sourceKey: key },
+      }).catch((e: any) => console.warn('[lesson-video] transcode trigger failed:', e?.message));
     } catch (e: any) {
+      console.error('[lesson-video] FAILED:', e?.message, e);
       Alert.alert('Upload failed', e.message ?? 'Could not upload video');
       onUpdate({ videoUri: null, content: '' });
     } finally { setUploading(false); }
@@ -273,7 +288,8 @@ function LessonEditor({
     setUploading(true); setUploadPct(0);
     try {
       const mime = asset.mimeType ?? 'application/octet-stream';
-      const size = asset.size ?? 0;
+      const file = new File(asset.uri);
+      const size = file.size > 0 ? file.size : (asset.size ?? 0);
       const { uploadUrl, key } = await presignUpload(folder, asset.name, mime, size);
       await uploadFileToS3(uploadUrl, asset.uri, mime, setUploadPct);
       onUpdate({ content: key } as Partial<FormLesson>);
@@ -532,22 +548,25 @@ function LessonEditor({
 
 type Props = {
   form: CourseForm;
-  update: (changes: Partial<CourseForm>) => void;
+  update: (changes: Partial<CourseForm> | ((prev: CourseForm) => Partial<CourseForm>)) => void;
+  makeEnsureLessonId: (sectionIdx: number, lessonIdx: number) => () => Promise<string>;
 };
 
-export function Step5({ form, update }: Props) {
+export function Step5({ form, update, makeEnsureLessonId }: Props) {
   const theme = useTheme();
   const [editingSectionIdx, setEditingSectionIdx] = useState<number | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
 
   function updateLesson(si: number, li: number, changes: Partial<FormLesson>) {
-    const sections = [...form.sections];
-    const sec = { ...sections[si] };
-    const lessons = [...sec.lessons];
-    lessons[li] = { ...lessons[li], ...changes };
-    sec.lessons = lessons;
-    sections[si] = sec;
-    update({ sections });
+    update((prev) => {
+      const sections = [...prev.sections];
+      const sec = { ...sections[si] };
+      const lessons = [...sec.lessons];
+      lessons[li] = { ...lessons[li], ...changes };
+      sec.lessons = lessons;
+      sections[si] = sec;
+      return { sections };
+    });
   }
 
   function addLesson(si: number) {
@@ -647,6 +666,7 @@ export function Step5({ form, update }: Props) {
                 theme={theme}
                 onUpdate={(changes) => updateLesson(si, li, changes)}
                 onDelete={() => deleteLesson(si, li)}
+                onEnsureLessonId={makeEnsureLessonId(si, li)}
               />
             ))}
             <Pressable onPress={() => addLesson(si)} style={[curr.addLessonBtn, { borderColor: theme.border }]}>

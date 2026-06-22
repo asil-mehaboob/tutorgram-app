@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { File as FSFile } from 'expo-file-system';
+import { File } from 'expo-file-system';
 import { Check, Image as ImageIcon, Play, VideoCamera } from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
-import { presignUpload, uploadFileToS3 } from '@/lib/api/tutor-upload';
+import { presignUpload, uploadFileToS3, uploadVideo } from '@/lib/api/tutor-upload';
 import { FieldLabel, SectionDivider, shared } from './shared';
 import type { CourseForm } from './types';
 
@@ -42,8 +42,8 @@ export function Step4({ form, update }: Props) {
     try {
       const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
       const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-      const fsFile = new FSFile(asset.uri);
-      const size = fsFile.size ?? asset.fileSize ?? 0;
+      const file = new File(asset.uri);
+      const size = file.size > 0 ? file.size : (asset.fileSize ?? 0);
       const { uploadUrl, key } = await presignUpload('thumbnail', `thumbnail.${ext}`, mime, size);
       await uploadFileToS3(uploadUrl, asset.uri, mime, setThumbPct);
       update({ thumbnailKey: key });
@@ -56,30 +56,41 @@ export function Step4({ form, update }: Props) {
   }
 
   async function pickPromoVideo() {
+    console.log('[PromoVideo] requesting permission');
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    console.log('[PromoVideo] permission:', JSON.stringify(permission));
     if (!permission.granted) {
       Alert.alert('Permission needed', 'Allow photo library access to upload a promo video.');
       return;
     }
+    console.log('[PromoVideo] launching picker');
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'videos',
       allowsEditing: false,
       videoMaxDuration: 300,
     });
-    if (result.canceled || !result.assets[0]) return;
+    console.log('[PromoVideo] picker result: canceled=', result.canceled, 'assets=', result.assets?.length);
+    if (result.canceled || !result.assets[0]) {
+      console.log('[PromoVideo] picker canceled or no asset');
+      return;
+    }
     const asset = result.assets[0];
+    console.log('[PromoVideo] asset uri=', asset.uri, 'mimeType=', asset.mimeType, 'fileSize=', asset.fileSize);
     update({ promoVideoUri: asset.uri, promoVideoUrl: '' });
+    console.log('[PromoVideo] form updated with uri');
     setVideoUploading(true);
     setVideoPct(0);
     try {
       const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'mp4';
       const mime = asset.mimeType ?? `video/${ext}`;
-      const fsFile = new FSFile(asset.uri);
-      const size = fsFile.size ?? asset.fileSize ?? 0;
-      const { uploadUrl, key } = await presignUpload('promo-video', `promo-video.${ext}`, mime, size);
-      await uploadFileToS3(uploadUrl, asset.uri, mime, setVideoPct);
+      const file = new File(asset.uri);
+      const size = file.size > 0 ? file.size : (asset.fileSize ?? 0);
+      console.log('[PromoVideo] uploading: ext=', ext, 'mime=', mime, 'size=', size);
+      const key = await uploadVideo('promo-video', `promo-video.${ext}`, asset.uri, mime, size, undefined, setVideoPct);
+      console.log('[PromoVideo] upload complete, key=', key);
       update({ promoVideoUrl: key });
     } catch (e: any) {
+      console.log('[PromoVideo] ERROR:', e?.message, e);
       Alert.alert('Upload failed', e.message ?? 'Could not upload promo video');
       update({ promoVideoUri: null, promoVideoUrl: '' });
     } finally {
@@ -140,16 +151,33 @@ export function Step4({ form, update }: Props) {
       <Pressable
         onPress={pickPromoVideo}
         disabled={videoUploading}
-        style={[styles.mediaBox, { borderColor: form.promoVideoUri ? theme.primary : theme.border, backgroundColor: theme.surface }]}
+        style={[
+          styles.mediaBox,
+          {
+            borderColor: form.promoVideoUrl ? '#2E7D32' : form.promoVideoUri ? theme.primary : theme.border,
+            borderStyle: form.promoVideoUri ? 'solid' : 'dashed',
+            backgroundColor: theme.surface,
+          },
+        ]}
       >
         {form.promoVideoUri ? (
           <>
-            <View style={[styles.emptyBox, { backgroundColor: theme.surfaceEl }]}>
-              <Play size={36} color={form.promoVideoUrl ? theme.primary : theme.textSecondary} weight="fill" />
-              <Text style={[styles.emptyText, { color: form.promoVideoUrl ? theme.primary : theme.textSecondary }]} numberOfLines={1}>
-                {form.promoVideoUri.split('/').pop()}
-              </Text>
-            </View>
+            {form.promoVideoUrl && !videoUploading ? (
+              <View style={styles.emptyBox}>
+                <Check size={40} color="#2E7D32" weight="bold" />
+                <Text style={[styles.emptyText, { color: '#2E7D32' }]}>Video uploaded</Text>
+                <Text style={[styles.emptyHint, { color: '#2E7D32' }]} numberOfLines={1}>
+                  {form.promoVideoUri.split('/').pop()}
+                </Text>
+              </View>
+            ) : (
+              <View style={[styles.emptyBox, { backgroundColor: theme.surfaceEl }]}>
+                <Play size={36} color={theme.textSecondary} weight="fill" />
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]} numberOfLines={1}>
+                  {form.promoVideoUri.split('/').pop()}
+                </Text>
+              </View>
+            )}
             {videoUploading && (
               <View style={styles.overlay}>
                 <ActivityIndicator color="#fff" />
@@ -170,13 +198,6 @@ export function Step4({ form, update }: Props) {
           </View>
         )}
       </Pressable>
-
-      {form.promoVideoUrl && !videoUploading && (
-        <View style={styles.uploadedBadge}>
-          <Check size={14} color="#2E7D32" weight="bold" />
-          <Text style={[styles.uploadedText, { color: '#2E7D32' }]}>Promo video uploaded</Text>
-        </View>
-      )}
     </View>
   );
 }

@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts, Spacing } from '@/constants/theme';
 import { tutorApiRequest } from '@/lib/api/tutor-client';
+import { getCourse } from '@/lib/api/tutor-courses';
 import type { Category } from '@/lib/api/tutor-courses';
 
 import { INITIAL_FORM, STEPS } from '@/components/tutor/course-create/constants';
@@ -120,6 +121,56 @@ function validateStep(step: number, form: CourseForm): string | null {
   }
 }
 
+// ─── Ensure lesson ID ─────────────────────────────────────────────────────────
+// Mirrors the web app's draft-save-before-upload pattern: saves the course as a
+// draft (creating it if needed) to get real DB IDs, then returns the DB ID for
+// the lesson at [sectionIdx][lessonIdx]. Also promotes all returned IDs into
+// form state so subsequent calls don't re-save unnecessarily.
+
+async function ensureLessonId(
+  currentForm: CourseForm,
+  currentDraftId: string | null,
+  si: number,
+  li: number,
+  onDraftCreated: (id: string) => void,
+  onIdsPromoted: (sections: CourseForm['sections']) => void
+): Promise<string> {
+  const payload = buildPayload(currentForm);
+  let courseId = currentDraftId;
+
+  if (!courseId) {
+    const res = await tutorApiRequest<{ id: string }>('/api/courses/draft', { method: 'POST', body: payload });
+    courseId = res.id;
+    onDraftCreated(courseId);
+  } else {
+    await tutorApiRequest(`/api/courses/${courseId}/draft`, { method: 'PUT', body: payload });
+  }
+
+  const saved = await getCourse(courseId);
+  const savedSections = (saved.sections ?? []).slice().sort((a, b) => a.order - b.order);
+
+  // Promote all returned DB IDs into form state
+  const promoted = currentForm.sections.map((sec, secIdx) => {
+    const savedSec = savedSections[secIdx];
+    if (!savedSec) return sec;
+    const savedLessons = savedSec.lessons.slice().sort((a, b) => a.order - b.order);
+    return {
+      ...sec,
+      id: sec.id ?? savedSec.id,
+      lessons: sec.lessons.map((l, lessonIdx) => ({
+        ...l,
+        id: l.id ?? savedLessons[lessonIdx]?.id,
+      })),
+    };
+  });
+  onIdsPromoted(promoted);
+
+  const savedSection = savedSections[si];
+  const savedLesson = savedSection?.lessons.slice().sort((a, b) => a.order - b.order)[li];
+  if (!savedLesson?.id) throw new Error('Could not determine lesson ID. Please try again.');
+  return savedLesson.id;
+}
+
 // ─── Main wizard ──────────────────────────────────────────────────────────────
 
 export default function CreateCourse() {
@@ -138,8 +189,12 @@ export default function CreateCourse() {
     staleTime: 10 * 60_000,
   });
 
-  function update(changes: Partial<CourseForm>) {
-    setForm((prev) => ({ ...prev, ...changes }));
+  function update(changes: Partial<CourseForm> | ((prev: CourseForm) => Partial<CourseForm>)) {
+    if (typeof changes === 'function') {
+      setForm((prev) => ({ ...prev, ...changes(prev) }));
+    } else {
+      setForm((prev) => ({ ...prev, ...changes }));
+    }
   }
 
   async function saveDraft(silent = false) {
@@ -147,7 +202,7 @@ export default function CreateCourse() {
     try {
       const payload = buildPayload(form);
       if (draftId) {
-        await tutorApiRequest(`/api/courses/${draftId}/draft`, { method: 'PATCH', body: payload });
+        await tutorApiRequest(`/api/courses/${draftId}/draft`, { method: 'PUT', body: payload });
       } else {
         const res = await tutorApiRequest<{ id: string }>('/api/courses/draft', { method: 'POST', body: payload });
         setDraftId(res.id);
@@ -198,6 +253,18 @@ export default function CreateCourse() {
     }
   }
 
+  function makeEnsureLessonId(si: number, li: number) {
+    return () =>
+      ensureLessonId(
+        form,
+        draftId,
+        si,
+        li,
+        (id) => setDraftId(id),
+        (promoted) => setForm((prev) => ({ ...prev, sections: promoted }))
+      );
+  }
+
   const progress = (step / (STEPS.length - 1)) * 100;
   const currentStep = STEPS[step];
   const isLastStep = step === STEPS.length - 1;
@@ -245,7 +312,7 @@ export default function CreateCourse() {
           {step === 1 && <Step2 form={form} update={update} />}
           {step === 2 && <Step3 form={form} update={update} />}
           {step === 3 && <Step4 form={form} update={update} />}
-          {step === 4 && <Step5 form={form} update={update} />}
+          {step === 4 && <Step5 form={form} update={update} makeEnsureLessonId={makeEnsureLessonId} />}
           {step === 5 && <Step6 form={form} update={update} />}
           {step === 6 && <Step7 form={form} update={update} />}
         </ScrollView>
