@@ -104,7 +104,6 @@ export function RichField({
         icon: { height: 28, width: 28, tintColor: iconColor },
         iconActive: { tintColor: colors.primary },
         linkBarTheme: {},
-        keyboardAvoidingView: { position: 'absolute' as const, width: '100%' as const, bottom: 0 },
       },
       webview: { backgroundColor: colors.surface },
       webviewContainer: {},
@@ -113,7 +112,7 @@ export function RichField({
 
   const editor = useEditorBridge({
     autofocus: false,
-    avoidIosKeyboard: true,
+    avoidIosKeyboard: false,
     initialContent: value || '<p></p>',
     bridgeExtensions,
     theme: editorTheme,
@@ -225,13 +224,12 @@ export function RichField({
         {/* Formatting toolbar — always visible */}
         <Toolbar editor={editor} hidden={false} items={EDITOR_TOOLBAR_ITEMS} />
 
-        {/* TipTap WebView editor — fixed height prevents infinite growth in ScrollView */}
         <View style={{ height: minHeight }}>
           <RichText
             editor={editor}
             onMessage={handleWebViewMessage}
             exclusivelyUseCustomOnMessage={false}
-            style={{ flex: 1 }}
+            containerStyle={{ flex: 1 }}
           />
         </View>
       </View>
