@@ -179,7 +179,11 @@ export async function deleteCourse(id: string): Promise<void> {
 }
 
 export async function publishCourse(id: string): Promise<void> {
-  await tutorApiRequest(`/api/courses/${id}/publish`, { method: 'POST' });
+  await tutorApiRequest(`/api/courses/${id}/publish`, { method: 'POST', body: { action: 'publish' } });
+}
+
+export async function unpublishCourse(id: string): Promise<void> {
+  await tutorApiRequest(`/api/courses/${id}/publish`, { method: 'POST', body: { action: 'unpublish' } });
 }
 
 export async function getCourseDraft(id: string): Promise<TutorCourse> {

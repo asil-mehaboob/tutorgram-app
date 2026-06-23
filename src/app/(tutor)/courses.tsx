@@ -1,13 +1,26 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, BookOpen } from 'phosphor-react-native';
+import { BookOpen, Plus, Warning } from 'phosphor-react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts, Spacing, BottomTabInset } from '@/constants/theme';
 import { CourseRow } from '@/components/tutor/course-row';
-import { getMyCourses, deleteCourse } from '@/lib/api/tutor-courses';
+import {
+  getMyCourses,
+  deleteCourse,
+  publishCourse,
+  unpublishCourse,
+} from '@/lib/api/tutor-courses';
 import type { CourseStatus, TutorCourse } from '@/lib/api/tutor-courses';
 
 const TABS: { label: string; value: CourseStatus | 'ALL' }[] = [
@@ -21,6 +34,8 @@ export default function TutorCourses() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<CourseStatus | 'ALL'>('ALL');
+  const [confirmDelete, setConfirmDelete] = useState<TutorCourse | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['tutor-courses', filter],
@@ -30,38 +45,33 @@ export default function TutorCourses() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteCourse(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tutor-courses'] }),
+    onSuccess: () => {
+      setConfirmDelete(null);
+      qc.invalidateQueries({ queryKey: ['tutor-courses'] });
+    },
   });
 
-function handleMore(course: TutorCourse) {
-    const actions: { text: string; onPress?: () => void; style?: 'destructive' | 'cancel' }[] = [
-      {
-        text: 'Preview',
-        onPress: () => router.push({ pathname: '/tutor-course/[id]/preview' as any, params: { id: course.id } }),
-      },
-    ];
-
-
-    if (course.status !== 'ARCHIVED') {
-      actions.push({
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert('Delete Course', `Delete "${course.title}"? This cannot be undone.`, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate(course.id) },
-          ]),
-      });
+  async function handlePublish(course: TutorCourse) {
+    setPublishingId(course.id);
+    try {
+      if (course.status === 'PUBLISHED') {
+        await unpublishCourse(course.id);
+      } else {
+        await publishCourse(course.id);
+      }
+      qc.invalidateQueries({ queryKey: ['tutor-courses'] });
+    } catch {
+      // error handled silently; could add toast here
+    } finally {
+      setPublishingId(null);
     }
-    actions.push({ text: 'Cancel', style: 'cancel' });
-
-    Alert.alert(course.title, undefined, actions);
   }
 
   const courses = data ?? [];
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
+
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>My Courses</Text>
@@ -120,13 +130,55 @@ function handleMore(course: TutorCourse) {
               course={item}
               onEdit={() => router.push({ pathname: '/tutor-course/[id]/edit', params: { id: item.id } })}
               onPreview={() => router.push({ pathname: '/tutor-course/[id]/preview' as any, params: { id: item.id } })}
-              onMore={() => handleMore(item)}
+              onPublish={() => handlePublish(item)}
+              onDelete={() => setConfirmDelete(item)}
+              isPublishing={publishingId === item.id}
             />
           )}
           contentContainerStyle={[styles.list, { paddingBottom: BottomTabInset + 16 }]}
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Delete confirmation modal */}
+      <Modal visible={!!confirmDelete} transparent animationType="fade" onRequestClose={() => setConfirmDelete(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setConfirmDelete(null)}>
+          <Pressable style={[styles.dialog, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => {}}>
+
+            <View style={styles.dialogIcon}>
+              <Warning size={28} color="#EF4444" weight="regular" />
+            </View>
+
+            <Text style={[styles.dialogTitle, { color: theme.text }]}>Delete Course</Text>
+            <Text style={[styles.dialogBody, { color: theme.textSecondary }]}>
+              <Text style={{ color: theme.text, fontFamily: Fonts.semiBold }}>"{confirmDelete?.title}"</Text>
+              {' '}will be permanently deleted. This cannot be undone.
+            </Text>
+
+            <View style={[styles.dialogDivider, { backgroundColor: theme.border }]} />
+
+            <View style={styles.dialogActions}>
+              <Pressable
+                onPress={() => setConfirmDelete(null)}
+                style={({ pressed }) => [styles.dialogBtn, { borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={[styles.dialogBtnText, { color: theme.text }]}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+                disabled={deleteMutation.isPending}
+                style={({ pressed }) => [styles.dialogBtn, styles.dialogBtnDelete, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                {deleteMutation.isPending
+                  ? <ActivityIndicator size={14} color="#fff" />
+                  : <Text style={[styles.dialogBtnText, { color: '#fff' }]}>Delete</Text>}
+              </Pressable>
+            </View>
+
+          </Pressable>
+        </Pressable>
+      </Modal>
+
     </View>
   );
 }
@@ -170,4 +222,60 @@ const styles = StyleSheet.create({
   createBtnText: { fontSize: 15, fontFamily: Fonts.bold, color: '#fff' },
   retryBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   retryText: { fontSize: 14, fontFamily: Fonts.semiBold },
+
+  // Delete dialog
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  dialog: {
+    width: '100%',
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+    alignItems: 'center',
+    paddingTop: 28,
+  },
+  dialogIcon: {
+    marginBottom: 12,
+  },
+  dialogTitle: {
+    fontSize: 17,
+    fontFamily: Fonts.bold,
+    marginBottom: 8,
+  },
+  dialogBody: {
+    fontSize: 14,
+    fontFamily: Fonts.regular,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  dialogDivider: {
+    height: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+  },
+  dialogBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRightWidth: StyleSheet.hairlineWidth,
+  },
+  dialogBtnDelete: {
+    backgroundColor: '#EF4444',
+    borderRightWidth: 0,
+  },
+  dialogBtnText: {
+    fontSize: 15,
+    fontFamily: Fonts.semiBold,
+  },
 });
