@@ -14,6 +14,7 @@ import { useEvent, useEventListener } from 'expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import {
+  ArrowCounterClockwise,
   ArrowLeft,
   DeviceRotate,
   FastForward,
@@ -60,6 +61,8 @@ export default function CoursePreviewScreen() {
   });
   const [duration, setDuration] = useState(0);
   useEventListener(player, 'sourceLoad', ({ duration: d }) => { if (d > 0) setDuration(d); });
+  const [isEnded, setIsEnded] = useState(false);
+  useEventListener(player, 'playToEnd', () => setIsEnded(true));
 
   const isLoading = status === 'loading' || status === 'idle';
 
@@ -88,8 +91,7 @@ export default function CoursePreviewScreen() {
 
   useEffect(() => { resetTimer(); }, []);
 
-  // Show controls whenever paused
-  useEffect(() => { if (!isPlaying) show(); else resetTimer(); }, [isPlaying]);
+  useEffect(() => { if (!isPlaying || isEnded) show(); else resetTimer(); }, [isPlaying, isEnded]);
 
   // ── handlers ─────────────────────────────────────────────────────────────
   function handleTap() {
@@ -97,12 +99,23 @@ export default function CoursePreviewScreen() {
     else { resetTimer(); }
   }
 
+  function replay() {
+    setIsEnded(false);
+    player.currentTime = 0;
+    player.play();
+    resetTimer();
+  }
+
   function togglePlay() {
     if (player.playing) player.pause(); else player.play();
     resetTimer();
   }
 
-  function skip(secs: number) { player.seekBy(secs); resetTimer(); }
+  function skip(secs: number) {
+    setIsEnded(false);
+    player.seekBy(secs);
+    resetTimer();
+  }
 
   // ── seek bar ─────────────────────────────────────────────────────────────
   const [barWidth, setBarWidth] = useState(1);
@@ -112,6 +125,7 @@ export default function CoursePreviewScreen() {
 
   function seek(x: number) {
     if (duration <= 0) return;
+    setIsEnded(false);
     player.currentTime = Math.max(0, Math.min(1, x / barWidth)) * duration;
     resetTimer();
   }
@@ -176,8 +190,14 @@ export default function CoursePreviewScreen() {
         contentFit="contain"
       />
 
-      {/* ── 2. Buffering / pause icon (non-interactive, below tap zone) ──── */}
-      {isLoading ? (
+      {/* ── 2. Buffering / pause / replay icon ───────────────────────────── */}
+      {isEnded ? (
+        <View style={styles.centered} pointerEvents="none">
+          <View style={styles.centerPlay}>
+            <ArrowCounterClockwise size={36} color="#fff" weight="bold" />
+          </View>
+        </View>
+      ) : isLoading ? (
         <View style={styles.centered} pointerEvents="none">
           <VideoSpinner size={40} />
         </View>
@@ -190,7 +210,7 @@ export default function CoursePreviewScreen() {
       ) : null}
 
       {/* ── 3. Full-screen tap zone ───────────────────────────────────────── */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={handleTap} />
+      <Pressable style={StyleSheet.absoluteFill} onPress={isEnded ? replay : handleTap} />
 
       {/* ── 4. Controls (top + bottom bars, absolutely positioned) ─────────
           Animated.View uses opacity only — no pointerEvents in style.

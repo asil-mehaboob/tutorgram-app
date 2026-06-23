@@ -17,6 +17,7 @@ import { useEvent, useEventListener } from 'expo';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import {
+  ArrowCounterClockwise,
   ArrowLeft,
   ArrowRight,
   Article,
@@ -136,13 +137,15 @@ function EmbeddedPlayer({ source, quality, onQualityChange, isLandscape, onToggl
   useEventListener(player, 'sourceLoad', ({ duration: d }) => {
     console.log('[Player] sourceLoad, duration:', d);
     if (d > 0) setDuration(d);
-    
+
     // Resume playback position after quality switch
     if (targetTimeRef.current > 0) {
       player.currentTime = targetTimeRef.current;
       targetTimeRef.current = 0;
     }
   });
+  const [isEnded, setIsEnded] = useState(false);
+  useEventListener(player, 'playToEnd', () => setIsEnded(true));
 
   const isBuffering = status === 'loading' || status === 'idle';
 
@@ -176,11 +179,18 @@ function EmbeddedPlayer({ source, quality, onQualityChange, isLandscape, onToggl
   }, [showControls, hideControls, player]);
 
   useEffect(() => { resetTimer(); }, []);
-  useEffect(() => { if (!isPlaying) showControls(); else resetTimer(); }, [isPlaying]);
+  useEffect(() => { if (!isPlaying || isEnded) showControls(); else resetTimer(); }, [isPlaying, isEnded]);
 
   function handleTap() {
     if (ctrlVisible.current) { if (hideTimer.current) clearTimeout(hideTimer.current); hideControls(); }
     else resetTimer();
+  }
+
+  function replay() {
+    setIsEnded(false);
+    player.currentTime = 0;
+    player.play();
+    resetTimer();
   }
 
   function togglePlay() {
@@ -188,7 +198,11 @@ function EmbeddedPlayer({ source, quality, onQualityChange, isLandscape, onToggl
     resetTimer();
   }
 
-  function skip(secs: number) { player.seekBy(secs); resetTimer(); }
+  function skip(secs: number) {
+    setIsEnded(false);
+    player.seekBy(secs);
+    resetTimer();
+  }
 
   // Seek bar
   const [barWidth, setBarWidth] = useState(1);
@@ -198,6 +212,7 @@ function EmbeddedPlayer({ source, quality, onQualityChange, isLandscape, onToggl
 
   function seek(x: number) {
     if (duration <= 0) return;
+    setIsEnded(false);
     player.currentTime = Math.max(0, Math.min(1, x / barWidth)) * duration;
     resetTimer();
   }
@@ -239,23 +254,25 @@ function EmbeddedPlayer({ source, quality, onQualityChange, isLandscape, onToggl
         contentFit="contain"
       />
 
-      {/* Buffering spinner */}
-      {isBuffering && playerHeight > 0 && (
+      {/* Buffering spinner — hidden when ended */}
+      {isBuffering && !isEnded && playerHeight > 0 && (
         <View style={overlayStyle} pointerEvents="none">
           <VideoSpinner size={40} />
         </View>
       )}
 
       {/* Tap zone */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={handleTap} />
+      <Pressable style={StyleSheet.absoluteFill} onPress={isEnded ? replay : handleTap} />
 
-      {/* Centred play button — on top of tap zone so taps go directly to togglePlay */}
-      {!isBuffering && !isPlaying && playerHeight > 0 && (
-        <Pressable style={overlayStyle} onPress={togglePlay}>
+      {/* Centred play / replay button */}
+      {playerHeight > 0 && (isEnded || (!isBuffering && !isPlaying)) && (
+        <View style={overlayStyle} pointerEvents="none">
           <View style={pStyles.centerBtn}>
-            <Play size={36} color="#fff" weight="fill" />
+            {isEnded
+              ? <ArrowCounterClockwise size={36} color="#fff" weight="bold" />
+              : <Play size={36} color="#fff" weight="fill" />}
           </View>
-        </Pressable>
+        </View>
       )}
 
       {/* Controls overlay */}

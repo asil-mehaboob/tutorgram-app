@@ -392,12 +392,19 @@ export default function TutorCoursePreviewScreen() {
                         {isOpen && (
                           <View style={[styles.lessonList, { backgroundColor: theme.surfaceEl, borderTopColor: theme.border }]}>
                             {section.lessons.map((lesson: TutorLesson, lIdx: number) => (
-                              <View
+                              <Pressable
                                 key={lesson.id}
-                                style={[
+                                onPress={() =>
+                                  router.push({
+                                    pathname: '/tutor-course/[id]/lesson' as any,
+                                    params: { id: id!, lessonId: lesson.id },
+                                  })
+                                }
+                                style={({ pressed }) => [
                                   styles.lessonItem,
                                   lIdx < section.lessons.length - 1 && styles.lessonItemBorder,
                                   lIdx < section.lessons.length - 1 && { borderBottomColor: theme.border },
+                                  pressed && { backgroundColor: theme.surfaceEl, opacity: 0.8 },
                                 ]}
                               >
                                 <View style={styles.lessonItemIcon}>
@@ -420,7 +427,7 @@ export default function TutorCoursePreviewScreen() {
                                     </Text>
                                   )}
                                 </View>
-                              </View>
+                              </Pressable>
                             ))}
                           </View>
                         )}

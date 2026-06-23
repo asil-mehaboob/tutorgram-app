@@ -18,6 +18,7 @@ export type TutorLesson = {
   duration: number | null;
   isFreePreview: boolean;
   videoStatus: VideoStatus;
+  content?: string | null;
   order: number;
 };
 
@@ -204,3 +205,16 @@ export async function getCategories(): Promise<Category[]> {
 export async function getAiComplete(field: string, context: Record<string, string>): Promise<{ completion: string }> {
   return tutorApiRequest<{ completion: string }>('/api/ai/complete', { method: 'POST', body: { field, context } });
 }
+
+export async function getTutorSignedUrl(key: string): Promise<{ url: string; expiresIn: number }> {
+  return tutorApiRequest<{ url: string; expiresIn: number }>(`/api/files/signed-url?key=${encodeURIComponent(key)}`);
+}
+
+type MobileStreamData =
+  | { contentType: 'hls'; manifest: string }
+  | { contentType: 'mp4'; streamUrl: string };
+
+export async function getTutorMobileStream(lessonId: string): Promise<MobileStreamData> {
+  return tutorApiRequest<MobileStreamData>(`/api/video/${lessonId}/mobile-stream`);
+}
+
