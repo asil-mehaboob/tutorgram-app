@@ -34,7 +34,12 @@ export default function TutorCourses() {
   });
 
 function handleMore(course: TutorCourse) {
-    const actions: { text: string; onPress?: () => void; style?: 'destructive' | 'cancel' }[] = [];
+    const actions: { text: string; onPress?: () => void; style?: 'destructive' | 'cancel' }[] = [
+      {
+        text: 'Preview',
+        onPress: () => router.push({ pathname: '/tutor-course/[id]/preview' as any, params: { id: course.id } }),
+      },
+    ];
 
 
     if (course.status !== 'ARCHIVED') {
@@ -114,6 +119,7 @@ function handleMore(course: TutorCourse) {
             <CourseRow
               course={item}
               onEdit={() => router.push({ pathname: '/tutor-course/[id]/edit', params: { id: item.id } })}
+              onPreview={() => router.push({ pathname: '/tutor-course/[id]/preview' as any, params: { id: item.id } })}
               onMore={() => handleMore(item)}
             />
           )}

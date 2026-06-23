@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ListBullets, Plus, Tag, Trash } from 'phosphor-react-native';
+import { ArrowLeft, Eye, ListBullets, Plus, Tag, Trash } from 'phosphor-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts, Spacing } from '@/constants/theme';
@@ -357,13 +357,22 @@ export default function EditCourse() {
           </Text>
           {course && <StatusChip status={course.status} small />}
         </View>
-        <Pressable
-          onPress={() => router.push({ pathname: '/tutor-course/[id]/curriculum', params: { id: id! } })}
-          style={[styles.currBtn, { backgroundColor: theme.surfaceEl }]}
-        >
-          <ListBullets size={15} color={theme.textSecondary} />
-          <Text style={[styles.currBtnText, { color: theme.textSecondary }]}>Curriculum</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => router.push({ pathname: '/tutor-course/[id]/preview' as any, params: { id: id! } })}
+            style={[styles.currBtn, { backgroundColor: theme.surfaceEl }]}
+          >
+            <Eye size={15} color={theme.textSecondary} />
+            <Text style={[styles.currBtnText, { color: theme.textSecondary }]}>Preview</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push({ pathname: '/tutor-course/[id]/curriculum', params: { id: id! } })}
+            style={[styles.currBtn, { backgroundColor: theme.surfaceEl }]}
+          >
+            <ListBullets size={15} color={theme.textSecondary} />
+            <Text style={[styles.currBtnText, { color: theme.textSecondary }]}>Curriculum</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Tab bar */}
@@ -668,6 +677,7 @@ const styles = StyleSheet.create({
   back: { padding: 4 },
   headerCenter: { flex: 1, gap: 4 },
   headerTitle: { fontSize: 16, fontFamily: Fonts.bold },
+  headerActions: { flexDirection: 'row', gap: 6 },
   currBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   currBtnText: { fontSize: 12, fontFamily: Fonts.semiBold },
   tabBar: { borderBottomWidth: StyleSheet.hairlineWidth, flexGrow: 0 },

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { PencilSimple, DotsThreeVertical, Student, CurrencyInr } from 'phosphor-react-native';
+import { PencilSimple, Eye, DotsThreeVertical, Student, CurrencyInr } from 'phosphor-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { StatusChip } from './status-chip';
@@ -16,10 +16,11 @@ function fallbackColor(id: string) {
 type CourseRowProps = {
   course: TutorCourse;
   onEdit: () => void;
+  onPreview: () => void;
   onMore: () => void;
 };
 
-export function CourseRow({ course, onEdit, onMore }: CourseRowProps) {
+export function CourseRow({ course, onEdit, onPreview, onMore }: CourseRowProps) {
   const theme = useTheme();
   const bg = fallbackColor(course.id);
 
@@ -59,6 +60,9 @@ export function CourseRow({ course, onEdit, onMore }: CourseRowProps) {
       <View style={styles.actions}>
         <Pressable onPress={onEdit} hitSlop={8}>
           <PencilSimple size={18} color={theme.textSecondary} weight="regular" />
+        </Pressable>
+        <Pressable onPress={onPreview} hitSlop={8}>
+          <Eye size={18} color={theme.textSecondary} weight="regular" />
         </Pressable>
         <Pressable onPress={onMore} hitSlop={8}>
           <DotsThreeVertical size={18} color={theme.textSecondary} weight="regular" />
