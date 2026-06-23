@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, KeyboardAvoidingView, Platform,
   Pressable, ScrollView, StyleSheet, Switch, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { RichField } from '@/components/tutor/rich-field';
 import { StatusChip } from '@/components/tutor/status-chip';
 import { getCourse, saveCourseDraft } from '@/lib/api/tutor-courses';
+import { useDialog } from '@/lib/dialog/context';
 import { tutorApiRequest } from '@/lib/api/tutor-client';
 import type { CourseLevel } from '@/lib/api/tutor-courses';
 
@@ -153,6 +154,7 @@ export default function EditCourse() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { showDialog } = useDialog();
   const qc = useQueryClient();
   const [tab, setTab] = useState<ActiveTab>('basics');
   const [saving, setSaving] = useState(false);
@@ -266,7 +268,7 @@ export default function EditCourse() {
     try {
       await saveCourseDraft(id, buildPayload());
       qc.invalidateQueries({ queryKey: ['tutor-course', id] });
-      Alert.alert('Saved', 'Draft saved successfully.');
+      showDialog({ title: 'Saved', message: 'Draft saved successfully.', type: 'success' });
     } catch (e: any) {
       setError(e.message ?? 'Failed to save draft.');
     } finally {
@@ -282,7 +284,7 @@ export default function EditCourse() {
       await saveCourseDraft(id, buildPayload());
       await tutorApiRequest(`/api/courses/${id}/publish`, { method: 'POST', body: { action: 'publish' } });
       qc.invalidateQueries({ queryKey: ['tutor-course', id] });
-      Alert.alert('Published', 'Course published successfully.', [{ text: 'OK', onPress: () => router.back() }]);
+      showDialog({ title: 'Published', message: 'Course published successfully.', type: 'success', actions: [{ label: 'OK', onPress: () => router.back() }] });
     } catch (e: any) {
       setError(e.message ?? 'Failed to publish course.');
     } finally {
@@ -295,19 +297,20 @@ export default function EditCourse() {
 
   async function handleUnpublish() {
     if (!id) return;
-    Alert.alert(
-      'Move to Draft',
-      'This will unpublish the course and hide it from students. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showDialog({
+      title: 'Move to Draft',
+      message: 'This will unpublish the course and hide it from students. Continue?',
+      type: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'cancel' },
         {
-          text: 'Move to Draft', style: 'destructive', onPress: async () => {
+          label: 'Move to Draft', variant: 'destructive', onPress: async () => {
             setUnpublishing(true);
             setError('');
             try {
               await tutorApiRequest(`/api/courses/${id}/publish`, { method: 'POST', body: { action: 'unpublish' } });
               qc.invalidateQueries({ queryKey: ['tutor-course', id] });
-              Alert.alert('Moved to Draft', 'Course is now a draft and hidden from students.');
+              showDialog({ title: 'Moved to Draft', message: 'Course is now a draft and hidden from students.', type: 'success' });
             } catch (e: any) {
               setError(e.message ?? 'Failed to unpublish course.');
             } finally {
@@ -315,8 +318,8 @@ export default function EditCourse() {
             }
           },
         },
-      ]
-    );
+      ],
+    });
   }
 
   function addPromo() {
@@ -331,10 +334,15 @@ export default function EditCourse() {
   }
 
   function deletePromo(idx: number) {
-    Alert.alert('Remove Promo Code', 'Remove this promo code?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => setPromoCodes((prev) => prev.filter((_, i) => i !== idx)) },
-    ]);
+    showDialog({
+      title: 'Remove Promo Code',
+      message: 'Remove this promo code?',
+      type: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'cancel' },
+        { label: 'Remove', variant: 'destructive', onPress: () => setPromoCodes((prev) => prev.filter((_, i) => i !== idx)) },
+      ],
+    });
   }
 
   const TABS: { key: ActiveTab; label: string }[] = [

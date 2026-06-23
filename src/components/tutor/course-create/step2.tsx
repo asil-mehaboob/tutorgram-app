@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts } from '@/constants/theme';
 import { getAiComplete } from '@/lib/api/tutor-courses';
@@ -13,6 +14,7 @@ type Props = {
 
 export function Step2({ form, update }: Props) {
   const theme = useTheme();
+  const { showDialog } = useDialog();
   const [shortAiLoading, setShortAiLoading] = useState(false);
   const [detailAiLoading, setDetailAiLoading] = useState(false);
 
@@ -25,7 +27,7 @@ export function Step2({ form, update }: Props) {
       const plain = result.completion.replace(/<[^>]*>/g, '').trim().slice(0, 300);
       update({ shortDescription: plain });
     } catch (e: any) {
-      Alert.alert('AI Complete failed', e?.message ?? 'Could not generate content. Please try again.');
+      showDialog({ title: 'AI Complete failed', message: e?.message ?? 'Could not generate content. Please try again.', type: 'error' });
     } finally {
       setShortAiLoading(false);
     }
@@ -41,7 +43,7 @@ export function Step2({ form, update }: Props) {
       const plain = result.completion.replace(/<[^>]*>/g, '').trim();
       update({ detailedDescription: plain });
     } catch (e: any) {
-      Alert.alert('AI Complete failed', e?.message ?? 'Could not generate content. Please try again.');
+      showDialog({ title: 'AI Complete failed', message: e?.message ?? 'Could not generate content. Please try again.', type: 'error' });
     } finally {
       setDetailAiLoading(false);
     }

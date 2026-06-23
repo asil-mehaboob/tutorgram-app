@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft, Eye, EyeSlash } from 'phosphor-react-native';
@@ -22,6 +22,7 @@ import { changePassword } from '@/lib/api/identity';
 export default function ChangePasswordScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { showDialog } = useDialog();
 
   const [current, setCurrent] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -45,12 +46,10 @@ export default function ChangePasswordScreen() {
   const { mutate, isPending } = useMutation({
     mutationFn: () => changePassword({ currentPassword: current, newPassword: newPass }),
     onSuccess: () => {
-      Alert.alert('Password changed', 'Your password has been updated successfully.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showDialog({ title: 'Password changed', message: 'Your password has been updated successfully.', type: 'success', actions: [{ label: 'OK', onPress: () => router.back() }] });
     },
     onError: (err: Error) => {
-      Alert.alert('Failed', err.message);
+      showDialog({ title: 'Failed', message: err.message, type: 'error' });
     },
   });
 

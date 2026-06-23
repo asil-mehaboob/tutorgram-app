@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -36,6 +36,7 @@ export default function SignupScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
+  const { showDialog } = useDialog();
   const params = useLocalSearchParams<{ role?: string }>();
   const role = params.role === 'tutor' ? 'tutor' : 'student';
   const isTutor = role === 'tutor';
@@ -98,7 +99,7 @@ export default function SignupScreen() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
       console.error('[Signup] Google signup error', msg);
-      if (!msg.includes('cancelled')) Alert.alert('Error', msg);
+      if (!msg.includes('cancelled')) showDialog({ title: 'Error', message: msg, type: 'error' });
     } finally {
       setGoogleLoading(false);
     }
@@ -127,7 +128,7 @@ export default function SignupScreen() {
       setStep('otp');
     } catch (err: unknown) {
       console.error('[Signup] Send OTP error', err instanceof Error ? err.message : err);
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to send OTP.');
+      showDialog({ title: 'Error', message: err instanceof Error ? err.message : 'Failed to send OTP.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -154,7 +155,7 @@ export default function SignupScreen() {
       setStep('details');
     } catch (err: unknown) {
       console.error('[Signup] Verify OTP error', err instanceof Error ? err.message : err);
-      Alert.alert('Error', err instanceof Error ? err.message : 'Invalid OTP.');
+      showDialog({ title: 'Error', message: err instanceof Error ? err.message : 'Invalid OTP.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -200,16 +201,17 @@ export default function SignupScreen() {
       }
 
       console.log('[Signup] Account created successfully', { role });
-      Alert.alert(
-        'Account created!',
-        isTutor
+      showDialog({
+        title: 'Account created!',
+        message: isTutor
           ? 'Your tutor account is ready. Sign in to get started.'
           : 'Sign in to start learning.',
-        [{ text: 'Sign In', onPress: () => router.replace(`/(auth)/login?role=${role}`) }]
-      );
+        type: 'success',
+        actions: [{ label: 'Sign In', onPress: () => router.replace(`/(auth)/login?role=${role}`) }],
+      });
     } catch (err: unknown) {
       console.error('[Signup] Register error', err instanceof Error ? err.message : err);
-      Alert.alert('Error', err instanceof Error ? err.message : 'Registration failed.');
+      showDialog({ title: 'Error', message: err instanceof Error ? err.message : 'Registration failed.', type: 'error' });
     } finally {
       setLoading(false);
     }

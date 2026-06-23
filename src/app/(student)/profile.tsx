@@ -1,4 +1,5 @@
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -76,6 +77,7 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { state, logout } = useAuth();
+  const { showDialog } = useDialog();
   const user = state.status === 'authenticated' ? state.user : null;
 
   const { data: learningData } = useQuery({
@@ -93,17 +95,22 @@ export default function ProfileScreen() {
     : '?';
 
   function handleLogout() {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/(auth)/login');
+    showDialog({
+      title: 'Sign out',
+      message: 'Are you sure you want to sign out?',
+      type: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'cancel' },
+        {
+          label: 'Sign out',
+          variant: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/(auth)/login');
+          },
         },
-      },
-    ]);
+      ],
+    });
   }
 
   const STATS = [

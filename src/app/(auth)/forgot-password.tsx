@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { tutorForgotPassword } from '@/lib/api/tutor-auth';
 export default function ForgotPasswordScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { showDialog } = useDialog();
   const params = useLocalSearchParams<{ role?: string }>();
   const role = params.role === 'tutor' ? 'tutor' : 'student';
   const isTutor = role === 'tutor';
@@ -36,7 +38,7 @@ export default function ForgotPasswordScreen() {
       }
       setSent(true);
     } catch (err: unknown) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong.');
+      showDialog({ title: 'Error', message: err instanceof Error ? err.message : 'Something went wrong.', type: 'error' });
     } finally {
       setLoading(false);
     }

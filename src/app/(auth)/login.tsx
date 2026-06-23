@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -29,6 +29,7 @@ export default function LoginScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
+  const { showDialog } = useDialog();
   const params = useLocalSearchParams<{ role?: string }>();
   const role = params.role === 'tutor' ? 'tutor' : 'student';
   const isTutor = role === 'tutor';
@@ -90,7 +91,7 @@ export default function LoginScreen() {
       router.replace((isTutor ? '/(tutor)' : '/(student)') as any);
     } catch (err: unknown) {
       console.error('[Login] Sign in error', err instanceof Error ? err.message : err);
-      Alert.alert('Sign in failed', err instanceof Error ? err.message : 'Something went wrong.');
+      showDialog({ title: 'Sign in failed', message: err instanceof Error ? err.message : 'Something went wrong.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -138,7 +139,7 @@ export default function LoginScreen() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
       console.error('[Login] Google sign in error', msg);
-      if (!msg.includes('cancelled')) Alert.alert('Error', msg);
+      if (!msg.includes('cancelled')) showDialog({ title: 'Error', message: msg, type: 'error' });
     } finally {
       setGoogleLoading(false);
     }

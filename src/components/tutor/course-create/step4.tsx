@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
@@ -17,6 +18,7 @@ type Props = {
 
 export function Step4({ form, update }: Props) {
   const theme = useTheme();
+  const { showDialog } = useDialog();
   const [thumbUploading, setThumbUploading] = useState(false);
   const [thumbPct, setThumbPct] = useState(0);
   const [videoUploading, setVideoUploading] = useState(false);
@@ -25,7 +27,7 @@ export function Step4({ form, update }: Props) {
   async function pickThumbnail() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission needed', 'Allow photo library access to upload a thumbnail.');
+      showDialog({ title: 'Permission needed', message: 'Allow photo library access to upload a thumbnail.', type: 'error' });
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -48,7 +50,7 @@ export function Step4({ form, update }: Props) {
       await uploadFileToS3(uploadUrl, asset.uri, mime, setThumbPct);
       update({ thumbnailKey: key });
     } catch (e: any) {
-      Alert.alert('Upload failed', e.message ?? 'Could not upload thumbnail');
+      showDialog({ title: 'Upload failed', message: e.message ?? 'Could not upload thumbnail', type: 'error' });
       update({ thumbnailUri: null, thumbnailKey: null });
     } finally {
       setThumbUploading(false);
@@ -60,7 +62,7 @@ export function Step4({ form, update }: Props) {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     console.log('[PromoVideo] permission:', JSON.stringify(permission));
     if (!permission.granted) {
-      Alert.alert('Permission needed', 'Allow photo library access to upload a promo video.');
+      showDialog({ title: 'Permission needed', message: 'Allow photo library access to upload a promo video.', type: 'error' });
       return;
     }
     console.log('[PromoVideo] launching picker');
@@ -91,7 +93,7 @@ export function Step4({ form, update }: Props) {
       update({ promoVideoUrl: key });
     } catch (e: any) {
       console.log('[PromoVideo] ERROR:', e?.message, e);
-      Alert.alert('Upload failed', e.message ?? 'Could not upload promo video');
+      showDialog({ title: 'Upload failed', message: e.message ?? 'Could not upload promo video', type: 'error' });
       update({ promoVideoUri: null, promoVideoUrl: '' });
     } finally {
       setVideoUploading(false);

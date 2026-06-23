@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'phosphor-react-native';
@@ -23,6 +23,7 @@ import { useAuth } from '@/lib/auth/context';
 export default function EditProfileScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { showDialog } = useDialog();
   const { state } = useAuth();
   const user = state.status === 'authenticated' ? state.user : null;
 
@@ -45,12 +46,10 @@ export default function EditProfileScreen() {
       phoneNumber: phoneNumber.trim() || null,
     }),
     onSuccess: () => {
-      Alert.alert('Profile updated', 'Your changes have been saved.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showDialog({ title: 'Profile updated', message: 'Your changes have been saved.', type: 'success', actions: [{ label: 'OK', onPress: () => router.back() }] });
     },
     onError: (err: Error) => {
-      Alert.alert('Update failed', err.message);
+      showDialog({ title: 'Update failed', message: err.message, type: 'error' });
     },
   });
 

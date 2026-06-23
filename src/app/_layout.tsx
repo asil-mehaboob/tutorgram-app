@@ -12,6 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { AuthProvider } from '@/lib/auth/context';
 import { ThemeProvider } from '@/lib/theme/context';
+import { DialogProvider } from '@/lib/dialog/context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,9 +40,11 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <Stack screenOptions={{ headerShown: false }} />
-        </AuthProvider>
+        <DialogProvider>
+          <AuthProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+          </AuthProvider>
+        </DialogProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

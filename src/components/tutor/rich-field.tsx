@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import {
   RichText,
   Toolbar,
@@ -57,6 +58,7 @@ export function RichField({
   courseTitle,
 }: RichFieldProps) {
   const { resolvedTheme } = useThemeContext();
+  const { showDialog } = useDialog();
   const isDark = resolvedTheme === 'dark';
   const colors = isDark ? Colors.dark : Colors.light;
   const [aiLoading, setAiLoading] = useState(false);
@@ -188,7 +190,7 @@ export function RichField({
       editor.setContent(html);
       onChangeText(html);
     } catch (e: any) {
-      Alert.alert('AI Complete failed', e?.message ?? 'Could not generate content. Please try again.');
+      showDialog({ title: 'AI Complete failed', message: e?.message ?? 'Could not generate content. Please try again.', type: 'error' });
     } finally {
       setAiLoading(false);
     }

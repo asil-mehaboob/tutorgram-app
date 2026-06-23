@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
@@ -236,13 +237,14 @@ function LessonEditor({
   onEnsureLessonId: () => Promise<string>;
   theme: ReturnType<typeof useTheme>;
 }) {
+  const { showDialog } = useDialog();
   const [expanded, setExpanded] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
 
   async function pickVideo() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Permission needed', 'Allow photo library access to upload video.'); return; }
+    if (!perm.granted) { showDialog({ title: 'Permission needed', message: 'Allow photo library access to upload video.', type: 'error' }); return; }
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'videos', allowsEditing: false });
     if (res.canceled || !res.assets[0]) return;
     const asset = res.assets[0];
@@ -271,7 +273,7 @@ function LessonEditor({
       }).catch((e: any) => console.warn('[lesson-video] transcode trigger failed:', e?.message));
     } catch (e: any) {
       console.error('[lesson-video] FAILED:', e?.message, e);
-      Alert.alert('Upload failed', e.message ?? 'Could not upload video');
+      showDialog({ title: 'Upload failed', message: e.message ?? 'Could not upload video', type: 'error' });
       onUpdate({ videoUri: null, content: '' });
     } finally { setUploading(false); }
   }
@@ -294,7 +296,7 @@ function LessonEditor({
       await uploadFileToS3(uploadUrl, asset.uri, mime, setUploadPct);
       onUpdate({ content: key } as Partial<FormLesson>);
     } catch (e: any) {
-      Alert.alert('Upload failed', e.message ?? 'Could not upload file');
+      showDialog({ title: 'Upload failed', message: e.message ?? 'Could not upload file', type: 'error' });
       onUpdate({ [uriKey]: null, [nameKey]: null, content: '' } as Partial<FormLesson>);
     } finally { setUploading(false); }
   }
@@ -554,6 +556,7 @@ type Props = {
 
 export function Step5({ form, update, makeEnsureLessonId }: Props) {
   const theme = useTheme();
+  const { showDialog } = useDialog();
   const [editingSectionIdx, setEditingSectionIdx] = useState<number | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState('');
 
@@ -578,18 +581,23 @@ export function Step5({ form, update, makeEnsureLessonId }: Props) {
   }
 
   function deleteLesson(si: number, li: number) {
-    Alert.alert('Delete Lesson', 'Remove this lesson?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: () => {
-          const sections = [...form.sections];
-          const sec = { ...sections[si] };
-          sec.lessons = sec.lessons.filter((_, i) => i !== li).map((l, i) => ({ ...l, order: i }));
-          sections[si] = sec;
-          update({ sections });
+    showDialog({
+      title: 'Delete Lesson',
+      message: 'Remove this lesson?',
+      type: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'cancel' },
+        {
+          label: 'Delete', variant: 'destructive', onPress: () => {
+            const sections = [...form.sections];
+            const sec = { ...sections[si] };
+            sec.lessons = sec.lessons.filter((_, i) => i !== li).map((l, i) => ({ ...l, order: i }));
+            sections[si] = sec;
+            update({ sections });
+          },
         },
-      },
-    ]);
+      ],
+    });
   }
 
   function addSection() {
@@ -601,14 +609,19 @@ export function Step5({ form, update, makeEnsureLessonId }: Props) {
   }
 
   function deleteSection(si: number) {
-    Alert.alert('Delete Section', `Remove "${form.sections[si].title}" and all its lessons?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: () => {
-          update({ sections: form.sections.filter((_, i) => i !== si).map((s, i) => ({ ...s, order: i })) });
+    showDialog({
+      title: 'Delete Section',
+      message: `Remove "${form.sections[si].title}" and all its lessons?`,
+      type: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'cancel' },
+        {
+          label: 'Delete', variant: 'destructive', onPress: () => {
+            update({ sections: form.sections.filter((_, i) => i !== si).map((s, i) => ({ ...s, order: i })) });
+          },
         },
-      },
-    ]);
+      ],
+    });
   }
 
   function saveSectionTitle(si: number) {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, PencilSimple, Trash } from 'phosphor-react-native';
@@ -17,6 +18,7 @@ export default function ProfileExperience() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const { showDialog } = useDialog();
   const [editing, setEditing] = useState<TutorExperience | null>(null);
   const [form, setForm] = useState<Omit<TutorExperience, 'id'>>(EMPTY);
   const [showForm, setShowForm] = useState(false);
@@ -32,10 +34,15 @@ export default function ProfileExperience() {
   function closeForm() { setShowForm(false); setEditing(null); setForm(EMPTY); }
 
   function confirmDelete(item: TutorExperience) {
-    Alert.alert('Delete', `Remove "${item.title} at ${item.company}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteM.mutate(item.id) },
-    ]);
+    showDialog({
+      title: 'Delete',
+      message: `Remove "${item.title} at ${item.company}"?`,
+      type: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'cancel' },
+        { label: 'Delete', variant: 'destructive', onPress: () => deleteM.mutate(item.id) },
+      ],
+    });
   }
 
   return (

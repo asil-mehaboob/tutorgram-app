@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, PencilSimple, Trash, VideoCamera, Article, ListChecks, Paperclip, Eye, EyeSlash } from 'phosphor-react-native';
@@ -9,6 +9,7 @@ import { Fonts, Spacing } from '@/constants/theme';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { getCourse, updateLesson, deleteLesson } from '@/lib/api/tutor-courses';
+import { useDialog } from '@/lib/dialog/context';
 import type { TutorLesson, LessonType } from '@/lib/api/tutor-courses';
 import { tutorApiRequest as apiReq } from '@/lib/api/tutor-client';
 
@@ -32,6 +33,7 @@ function LessonTypeIcon({ type, color }: { type: LessonType; color: string }) {
 export default function CourseCurriculum() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { showDialog } = useDialog();
   const { id } = useLocalSearchParams<{ id: string }>();
   const qc = useQueryClient();
 
@@ -116,10 +118,7 @@ export default function CourseCurriculum() {
                     <Plus size={16} color={theme.primary} weight="regular" />
                   </Pressable>
                   <Pressable
-                    onPress={() => Alert.alert('Delete Section', `Delete "${section.title}" and all its lessons?`, [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: () => deleteSection(section.id) },
-                    ])}
+                    onPress={() => showDialog({ title: 'Delete Section', message: `Delete "${section.title}" and all its lessons?`, type: 'warning', actions: [{ label: 'Cancel', variant: 'cancel' }, { label: 'Delete', variant: 'destructive', onPress: () => deleteSection(section.id) }] })}
                     hitSlop={8}
                   >
                     <Trash size={16} color={theme.error} weight="regular" />
@@ -138,10 +137,7 @@ export default function CourseCurriculum() {
                       : <EyeSlash size={14} color={theme.textSecondary} />}
                   </Pressable>
                   <Pressable
-                    onPress={() => Alert.alert('Delete', `Delete "${lesson.title}"?`, [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteLesson(lesson.id) },
-                    ])}
+                    onPress={() => showDialog({ title: 'Delete', message: `Delete "${lesson.title}"?`, type: 'warning', actions: [{ label: 'Cancel', variant: 'cancel' }, { label: 'Delete', variant: 'destructive', onPress: () => handleDeleteLesson(lesson.id) }] })}
                     style={styles.lessonDeleteBtn}
                   >
                     <Trash size={14} color={theme.error} weight="regular" />

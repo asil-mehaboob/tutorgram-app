@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -47,6 +46,7 @@ import {
 } from '@/lib/api/commerce';
 import { getMyLearning } from '@/lib/api/enrollment';
 import { ApiError } from '@/lib/api/client';
+import { useDialog } from '@/lib/dialog/context';
 import type { CourseSection, CourseLesson, CourseReview } from '@/lib/api/catalog';
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -176,6 +176,7 @@ export default function CourseDetailScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { courseIdOrSlug } = useLocalSearchParams<{ courseIdOrSlug: string }>();
+  const { showDialog } = useDialog();
   const queryClient = useQueryClient();
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -281,7 +282,7 @@ export default function CourseDetailScreen() {
       const e = err as { code?: string; description?: string; message?: string; status?: number };
       const anyErr = err as any;
       if (e?.code !== 'PAYMENT_CANCELLED') {
-        Alert.alert('Payment failed', anyErr?.message ?? e?.description ?? 'Please try again.');
+        showDialog({ title: 'Payment failed', message: anyErr?.message ?? e?.description ?? 'Please try again.', type: 'error' });
       }
     } finally {
       setPurchasing(false);

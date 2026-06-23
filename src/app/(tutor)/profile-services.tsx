@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useDialog } from '@/lib/dialog/context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, PencilSimple, Trash } from 'phosphor-react-native';
@@ -17,6 +18,7 @@ export default function ProfileServices() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const { showDialog } = useDialog();
   const [editing, setEditing] = useState<TutorService | null>(null);
   const [form, setForm] = useState<Omit<TutorService, 'id'>>(EMPTY);
   const [priceStr, setPriceStr] = useState('');
@@ -66,7 +68,7 @@ export default function ProfileServices() {
             </View>
             <View style={styles.cardActions}>
               <Pressable onPress={() => openEdit(item)} hitSlop={8}><PencilSimple size={18} color={theme.textSecondary} weight="regular" /></Pressable>
-              <Pressable onPress={() => Alert.alert('Delete', `Remove "${item.name}"?`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteM.mutate(item.id) }])} hitSlop={8}><Trash size={18} color={theme.error} weight="regular" /></Pressable>
+              <Pressable onPress={() => showDialog({ title: 'Delete', message: `Remove "${item.name}"?`, type: 'warning', actions: [{ label: 'Cancel', variant: 'cancel' }, { label: 'Delete', variant: 'destructive', onPress: () => deleteM.mutate(item.id) }] })} hitSlop={8}><Trash size={18} color={theme.error} weight="regular" /></Pressable>
             </View>
           </View>
         )}
