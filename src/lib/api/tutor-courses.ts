@@ -29,6 +29,17 @@ export type TutorSection = {
   lessons: TutorLesson[];
 };
 
+export type TutorPromoCode = {
+  id: string;
+  code: string;
+  discountType: 'PERCENTAGE' | 'FIXED';
+  discountValue: number;
+  validFrom: string;
+  validTill: string;
+  usageLimit: number | null;
+  isActive: boolean;
+};
+
 // Matches actual API response field names (list + detail)
 export type TutorCourse = {
   id: string;
@@ -42,6 +53,8 @@ export type TutorCourse = {
   isFree: boolean;
   price: number | null;
   discountPercent?: number | null;
+  discountValidTill?: string | null;
+  hasLifetimeAccess?: boolean;
   status: CourseStatus;
   // List response uses these names
   totalStudents: number;
@@ -59,6 +72,7 @@ export type TutorCourse = {
   detailedDescription?: string | null;
   category?: { id: string; name: string; slug: string } | null;
   subCategory?: { id: string; name: string; slug: string } | null;
+  promoCodes?: TutorPromoCode[];
   createdAt: string;
   updatedAt: string;
 };
@@ -112,8 +126,21 @@ export type UpdateCourseInput = Partial<{
   isFree: boolean;
   price: number | null;
   discountPercent: number | null;
+  discountValidTill: string | null;
+  hasLifetimeAccess: boolean;
+  courseExpiryDate: string | null;
   categoryId: string;
   subCategoryId: string;
+  promoCodes: Array<{
+    id?: string;
+    code: string;
+    discountType: 'PERCENTAGE' | 'FIXED';
+    discountValue: number;
+    validFrom: string;
+    validTill: string;
+    usageLimit: number | null;
+    isActive: boolean;
+  }>;
 }>;
 
 export type UpdateLessonInput = Partial<{

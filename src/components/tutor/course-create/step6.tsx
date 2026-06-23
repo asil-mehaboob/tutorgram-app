@@ -13,6 +13,10 @@ type Props = {
 
 export function Step6({ form, update }: Props) {
   const theme = useTheme();
+  const finalPrice = form.price && form.discountPercent
+    ? Math.round(parseFloat(form.price || '0') * (1 - parseFloat(form.discountPercent || '0') / 100))
+    : null;
+
   return (
     <View style={shared.stepContent}>
       <FieldLabel text="Course Type" required theme={theme} />
@@ -56,33 +60,37 @@ export function Step6({ form, update }: Props) {
                 placeholderTextColor={theme.textSecondary}
               />
             </View>
-            <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>Course Price</Text>
+            <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>Course Price (₹)</Text>
           </View>
 
-          <Input
-            label="Discount %"
-            value={form.discountPercent}
-            onChangeText={(v) => update({ discountPercent: v })}
-            placeholder="0–100 (leave blank for no discount)"
-            keyboardType="decimal-pad"
-          />
+          <View style={styles.discountRow}>
+            <View style={{ flex: 1 }}>
+              <Input
+                label="Discount %"
+                value={form.discountPercent}
+                onChangeText={(v) => update({ discountPercent: v })}
+                placeholder="0–100"
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Input
+                label="Discount Valid Till"
+                value={form.discountValidTill}
+                onChangeText={(v) => update({ discountValidTill: v })}
+                placeholder="YYYY-MM-DD"
+              />
+            </View>
+          </View>
 
-          {form.discountPercent && form.price && (
+          {finalPrice !== null && (
             <View style={[styles.priceSummary, { backgroundColor: theme.primaryLight }]}>
               <CurrencyInr size={14} color={theme.primary} weight="regular" />
               <Text style={[styles.priceSummaryText, { color: theme.primary }]}>
-                Original ₹{form.price}{'  →  '}Final ₹{Math.round(parseFloat(form.price || '0') * (1 - parseFloat(form.discountPercent || '0') / 100))}
-                {'  '}({form.discountPercent}% off)
+                Original ₹{form.price}{'  →  '}Final ₹{finalPrice}{'  '}({form.discountPercent}% off)
               </Text>
             </View>
           )}
-
-          <Input
-            label="Discount Valid Till"
-            value={form.discountValidTill}
-            onChangeText={(v) => update({ discountValidTill: v })}
-            placeholder="e.g. 2025-12-31"
-          />
         </>
       )}
     </View>
@@ -100,6 +108,7 @@ const styles = StyleSheet.create({
   priceInputWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingHorizontal: 14, height: 50 },
   priceInput: { flex: 1, fontSize: 20, fontFamily: Fonts.bold },
   priceLabel: { fontSize: 12, fontFamily: Fonts.medium },
+  discountRow: { flexDirection: 'row', gap: 10 },
   priceSummary: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderRadius: 8 },
   priceSummaryText: { fontSize: 13, fontFamily: Fonts.semiBold, flex: 1 },
 });

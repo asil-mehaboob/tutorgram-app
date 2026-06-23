@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
-  Pressable, ScrollView, StyleSheet, Text, View,
+  Pressable, ScrollView, StyleSheet, Switch, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ListBullets } from 'phosphor-react-native';
+import { ArrowLeft, ListBullets, Plus, Tag, Trash } from 'phosphor-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts, Spacing } from '@/constants/theme';
@@ -23,7 +23,131 @@ const LEVELS: { value: CourseLevel; label: string }[] = [
   { value: 'ALL_LEVELS', label: 'All Levels' },
 ];
 
-type ActiveTab = 'basics' | 'details' | 'pricing';
+type ActiveTab = 'basics' | 'details' | 'pricing' | 'access';
+
+type EditPromoCode = {
+  id?: string;
+  code: string;
+  discountType: 'PERCENTAGE' | 'FIXED';
+  discountValue: string;
+  validFrom: string;
+  validTill: string;
+  usageLimit: string;
+  isActive: boolean;
+};
+
+// ─── Promo Code Editor ────────────────────────────────────────────────────────
+
+function PromoCodeEditor({
+  code, index, onUpdate, onDelete, theme,
+}: {
+  code: EditPromoCode;
+  index: number;
+  onUpdate: (idx: number, u: Partial<EditPromoCode>) => void;
+  onDelete: (idx: number) => void;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <View style={[promoStyles.card, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+      <Pressable style={promoStyles.cardHeader} onPress={() => setExpanded(!expanded)}>
+        <Tag size={15} color={theme.primary} weight="regular" />
+        <Text style={[promoStyles.cardTitle, { color: theme.text }]}>
+          {code.code || `Promo Code ${index + 1}`}
+        </Text>
+        <View style={[promoStyles.badge, { backgroundColor: code.isActive ? '#E8F5E9' : theme.surfaceEl }]}>
+          <Text style={[promoStyles.badgeText, { color: code.isActive ? '#2E7D32' : theme.textSecondary }]}>
+            {code.isActive ? 'Active' : 'Inactive'}
+          </Text>
+        </View>
+        <Pressable onPress={() => onDelete(index)} hitSlop={8}>
+          <Trash size={15} color={theme.error} weight="regular" />
+        </Pressable>
+      </Pressable>
+
+      {expanded && (
+        <View style={[promoStyles.cardBody, { borderTopColor: theme.border }]}>
+          <Input
+            label="Code *"
+            value={code.code}
+            onChangeText={(v) => onUpdate(index, { code: v.toUpperCase() })}
+            placeholder="e.g. SUMMER2025"
+            autoCapitalize="characters"
+          />
+
+          <View style={{ gap: 6 }}>
+            <Text style={[promoStyles.fieldLabel, { color: theme.text }]}>Discount Type</Text>
+            <View style={promoStyles.chipRow}>
+              {[{ value: 'PERCENTAGE' as const, label: 'Percentage (%)' }, { value: 'FIXED' as const, label: 'Fixed Amount (₹)' }].map((opt) => {
+                const sel = code.discountType === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => onUpdate(index, { discountType: opt.value })}
+                    style={[promoStyles.chip, {
+                      borderColor: sel ? theme.primary : theme.border,
+                      backgroundColor: sel ? theme.primaryLight : theme.surface,
+                    }]}
+                  >
+                    <Text style={[promoStyles.chipText, { color: sel ? theme.primary : theme.textSecondary }]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <Input
+            label="Discount Value *"
+            value={code.discountValue}
+            onChangeText={(v) => onUpdate(index, { discountValue: v })}
+            placeholder={code.discountType === 'PERCENTAGE' ? '20' : '500'}
+            keyboardType="decimal-pad"
+          />
+
+          <View style={promoStyles.dateRow}>
+            <View style={{ flex: 1 }}>
+              <Input
+                label="Valid From *"
+                value={code.validFrom}
+                onChangeText={(v) => onUpdate(index, { validFrom: v })}
+                placeholder="YYYY-MM-DD"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Input
+                label="Valid Till *"
+                value={code.validTill}
+                onChangeText={(v) => onUpdate(index, { validTill: v })}
+                placeholder="YYYY-MM-DD"
+              />
+            </View>
+          </View>
+
+          <Input
+            label="Usage Limit"
+            value={code.usageLimit}
+            onChangeText={(v) => onUpdate(index, { usageLimit: v })}
+            placeholder="Leave blank for unlimited"
+            keyboardType="number-pad"
+          />
+
+          <View style={promoStyles.activeRow}>
+            <Text style={[promoStyles.fieldLabel, { color: theme.text }]}>Active</Text>
+            <Switch
+              value={code.isActive}
+              onValueChange={(v) => onUpdate(index, { isActive: v })}
+              trackColor={{ true: theme.primary }}
+            />
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Main Edit Screen ─────────────────────────────────────────────────────────
 
 export default function EditCourse() {
   const theme = useTheme();
@@ -37,17 +161,28 @@ export default function EditCourse() {
   const [error, setError] = useState('');
   const [initialized, setInitialized] = useState(false);
 
+  // Basics
   const [title, setTitle] = useState('');
   const [shortDesc, setShortDesc] = useState('');
   const [level, setLevel] = useState<CourseLevel>('ALL_LEVELS');
   const [language, setLanguage] = useState('English');
+
+  // Details
   const [detailedDesc, setDetailedDesc] = useState('');
   const [whatYouLearn, setWhatYouLearn] = useState('');
   const [whoIsFor, setWhoIsFor] = useState('');
   const [requirements, setRequirements] = useState('');
+
+  // Pricing
   const [isFree, setIsFree] = useState(true);
   const [priceStr, setPriceStr] = useState('');
   const [discountStr, setDiscountStr] = useState('');
+  const [discountValidTill, setDiscountValidTill] = useState('');
+
+  // Access & Promos
+  const [hasLifetimeAccess, setHasLifetimeAccess] = useState(true);
+  const [courseExpiryDate, setCourseExpiryDate] = useState('');
+  const [promoCodes, setPromoCodes] = useState<EditPromoCode[]>([]);
 
   const { data: course, isLoading } = useQuery({
     queryKey: ['tutor-course', id],
@@ -71,6 +206,20 @@ export default function EditCourse() {
       setIsFree(course.isFree);
       setPriceStr(course.price != null ? String(course.price) : '');
       setDiscountStr(course.discountPercent != null ? String(course.discountPercent) : '');
+      setDiscountValidTill(course.discountValidTill ? course.discountValidTill.substring(0, 10) : '');
+      setHasLifetimeAccess(course.hasLifetimeAccess ?? true);
+      setPromoCodes(
+        (course.promoCodes ?? []).map((pc) => ({
+          id: pc.id,
+          code: pc.code,
+          discountType: pc.discountType as 'PERCENTAGE' | 'FIXED',
+          discountValue: String(pc.discountValue),
+          validFrom: pc.validFrom ? pc.validFrom.substring(0, 10) : '',
+          validTill: pc.validTill ? pc.validTill.substring(0, 10) : '',
+          usageLimit: pc.usageLimit != null ? String(pc.usageLimit) : '',
+          isActive: pc.isActive,
+        }))
+      );
       setInitialized(true);
     }
   }, [course, initialized]);
@@ -90,6 +239,23 @@ export default function EditCourse() {
       isFree,
       price: !isFree && priceStr ? parseFloat(priceStr) || null : null,
       discountPercent: !isFree && discountStr ? parseInt(discountStr, 10) || null : null,
+      discountValidTill: !isFree && discountValidTill ? discountValidTill : null,
+      hasLifetimeAccess,
+      courseExpiryDate: !hasLifetimeAccess && courseExpiryDate ? courseExpiryDate : null,
+      promoCodes: !isFree
+        ? promoCodes
+            .filter((pc) => pc.code.trim() !== '')
+            .map((pc) => ({
+              ...(pc.id ? { id: pc.id } : {}),
+              code: pc.code.toUpperCase(),
+              discountType: pc.discountType,
+              discountValue: parseFloat(pc.discountValue) || 0,
+              validFrom: pc.validFrom,
+              validTill: pc.validTill,
+              usageLimit: pc.usageLimit ? parseInt(pc.usageLimit, 10) : null,
+              isActive: pc.isActive,
+            }))
+        : [],
     };
   }
 
@@ -153,10 +319,29 @@ export default function EditCourse() {
     );
   }
 
+  function addPromo() {
+    setPromoCodes((prev) => [
+      ...prev,
+      { code: '', discountType: 'PERCENTAGE', discountValue: '', validFrom: '', validTill: '', usageLimit: '', isActive: true },
+    ]);
+  }
+
+  function updatePromo(idx: number, changes: Partial<EditPromoCode>) {
+    setPromoCodes((prev) => prev.map((p, i) => i === idx ? { ...p, ...changes } : p));
+  }
+
+  function deletePromo(idx: number) {
+    Alert.alert('Remove Promo Code', 'Remove this promo code?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => setPromoCodes((prev) => prev.filter((_, i) => i !== idx)) },
+    ]);
+  }
+
   const TABS: { key: ActiveTab; label: string }[] = [
     { key: 'basics', label: 'Basics' },
     { key: 'details', label: 'Details' },
     { key: 'pricing', label: 'Pricing' },
+    { key: 'access', label: 'Access' },
   ];
 
   return (
@@ -182,7 +367,12 @@ export default function EditCourse() {
       </View>
 
       {/* Tab bar */}
-      <View style={[styles.tabBar, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={[styles.tabBar, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}
+        contentContainerStyle={styles.tabBarContent}
+      >
         {TABS.map((t) => {
           const active = tab === t.key;
           return (
@@ -192,7 +382,7 @@ export default function EditCourse() {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       {isLoading ? (
         <View style={styles.center}>
@@ -206,6 +396,7 @@ export default function EditCourse() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {/* ── Basics ─────────────────────────────────────────────── */}
             {tab === 'basics' && (
               <View style={styles.section}>
                 <Input
@@ -246,6 +437,7 @@ export default function EditCourse() {
               </View>
             )}
 
+            {/* ── Details ────────────────────────────────────────────── */}
             {tab === 'details' && (
               <View style={styles.section}>
                 <RichField
@@ -283,6 +475,7 @@ export default function EditCourse() {
               </View>
             )}
 
+            {/* ── Pricing ────────────────────────────────────────────── */}
             {tab === 'pricing' && (
               <View style={styles.section}>
                 <View style={styles.field}>
@@ -305,30 +498,118 @@ export default function EditCourse() {
                     })}
                   </View>
                 </View>
+
                 {!isFree && (
                   <>
                     <Input
-                      label="Price (₹)"
+                      label="Price (₹) *"
                       value={priceStr}
                       onChangeText={setPriceStr}
                       placeholder="e.g. 999"
                       keyboardType="decimal-pad"
                     />
-                    <Input
-                      label="Discount %"
-                      value={discountStr}
-                      onChangeText={setDiscountStr}
-                      placeholder="e.g. 20 (leave blank for none)"
-                      keyboardType="decimal-pad"
-                    />
+                    <View style={styles.row}>
+                      <View style={{ flex: 1 }}>
+                        <Input
+                          label="Discount %"
+                          value={discountStr}
+                          onChangeText={setDiscountStr}
+                          placeholder="0–100"
+                          keyboardType="decimal-pad"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Input
+                          label="Discount Valid Till"
+                          value={discountValidTill}
+                          onChangeText={setDiscountValidTill}
+                          placeholder="YYYY-MM-DD"
+                        />
+                      </View>
+                    </View>
                     {priceStr && discountStr ? (
                       <View style={[styles.pricePreview, { backgroundColor: theme.primaryLight }]}>
                         <Text style={[styles.pricePreviewText, { color: theme.primary }]}>
-                          ₹{priceStr} → ₹{Math.round(parseFloat(priceStr) * (1 - parseFloat(discountStr) / 100))} ({discountStr}% off)
+                          ₹{priceStr}{'  →  '}₹{Math.round(parseFloat(priceStr) * (1 - parseFloat(discountStr) / 100))}{'  '}({discountStr}% off)
                         </Text>
                       </View>
                     ) : null}
                   </>
+                )}
+              </View>
+            )}
+
+            {/* ── Access & Promos ─────────────────────────────────────── */}
+            {tab === 'access' && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Course Access</Text>
+
+                <View style={[styles.toggleRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                  <View style={{ gap: 2, flex: 1 }}>
+                    <Text style={[styles.toggleLabel, { color: theme.text }]}>Lifetime Access</Text>
+                    <Text style={[styles.toggleDesc, { color: theme.textSecondary }]}>
+                      Students keep access indefinitely after enrolling
+                    </Text>
+                  </View>
+                  <Switch
+                    value={hasLifetimeAccess}
+                    onValueChange={setHasLifetimeAccess}
+                    trackColor={{ true: theme.primary }}
+                  />
+                </View>
+
+                {!hasLifetimeAccess && (
+                  <Input
+                    label="Course Expiry Date *"
+                    value={courseExpiryDate}
+                    onChangeText={setCourseExpiryDate}
+                    placeholder="YYYY-MM-DD"
+                  />
+                )}
+
+                {!isFree && (
+                  <>
+                    <View style={styles.promoHeaderRow}>
+                      <Text style={[styles.sectionTitle, { color: theme.text }]}>Promo Codes</Text>
+                      <Pressable onPress={addPromo} style={[styles.addPromoBtn, { borderColor: theme.primary }]}>
+                        <Plus size={14} color={theme.primary} weight="regular" />
+                        <Text style={[styles.addPromoBtnText, { color: theme.primary }]}>Add Code</Text>
+                      </Pressable>
+                    </View>
+
+                    {promoCodes.length === 0 ? (
+                      <View style={[styles.emptyPromos, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+                        <Tag size={24} color={theme.textSecondary} weight="regular" />
+                        <Text style={[styles.emptyPromosText, { color: theme.textSecondary }]}>
+                          No promo codes yet
+                        </Text>
+                        <Text style={[styles.emptyPromosHint, { color: theme.textSecondary }]}>
+                          Add discount codes to offer students a special rate
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={{ gap: 10 }}>
+                        {promoCodes.map((pc, i) => (
+                          <PromoCodeEditor
+                            key={pc.id ?? i}
+                            code={pc}
+                            index={i}
+                            onUpdate={updatePromo}
+                            onDelete={deletePromo}
+                            theme={theme}
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </>
+                )}
+
+                {isFree && (
+                  <View style={[styles.infoBox, { backgroundColor: theme.surfaceEl, borderColor: theme.border }]}>
+                    <Text style={[styles.infoBoxText, { color: theme.textSecondary }]}>
+                      Promo codes are only available for paid courses. Switch the course to Paid in the Pricing tab to add promo codes.
+                    </Text>
+                  </View>
                 )}
               </View>
             )}
@@ -375,6 +656,8 @@ export default function EditCourse() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
@@ -387,18 +670,21 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 16, fontFamily: Fonts.bold },
   currBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   currBtnText: { fontSize: 12, fontFamily: Fonts.semiBold },
-  tabBar: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
-  tabItem: { flex: 1, alignItems: 'center', paddingVertical: 12 },
+  tabBar: { borderBottomWidth: StyleSheet.hairlineWidth, flexGrow: 0 },
+  tabBarContent: { flexDirection: 'row' },
+  tabItem: { paddingHorizontal: Spacing.three, paddingVertical: 12, alignItems: 'center' },
   tabLabel: { fontSize: 13, fontFamily: Fonts.semiBold },
-  tabLine: { position: 'absolute', bottom: 0, left: '20%', right: '20%', height: 2, borderRadius: 1 },
+  tabLine: { position: 'absolute', bottom: 0, left: '15%', right: '15%', height: 2, borderRadius: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll: { padding: Spacing.three, paddingBottom: 40 },
   section: { gap: 16 },
+  sectionTitle: { fontSize: 15, fontFamily: Fonts.bold },
   field: { gap: 8 },
   fieldLabel: { fontSize: 13, fontFamily: Fonts.semiBold },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   chipText: { fontSize: 13, fontFamily: Fonts.medium },
+  row: { flexDirection: 'row', gap: 10 },
   priceCards: { gap: 10 },
   priceCard: { flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1.5, borderRadius: 12, padding: 14 },
   priceRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
@@ -407,9 +693,35 @@ const styles = StyleSheet.create({
   priceCardDesc: { fontSize: 12, fontFamily: Fonts.regular },
   pricePreview: { padding: 10, borderRadius: 8 },
   pricePreviewText: { fontSize: 13, fontFamily: Fonts.semiBold },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 14 },
+  toggleLabel: { fontSize: 14, fontFamily: Fonts.semiBold },
+  toggleDesc: { fontSize: 12, fontFamily: Fonts.regular },
+  promoHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  addPromoBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+  addPromoBtnText: { fontSize: 12, fontFamily: Fonts.semiBold },
+  emptyPromos: { alignItems: 'center', gap: 8, padding: 24, borderWidth: 1, borderRadius: 12, borderStyle: 'dashed' },
+  emptyPromosText: { fontSize: 14, fontFamily: Fonts.semiBold },
+  emptyPromosHint: { fontSize: 12, fontFamily: Fonts.regular, textAlign: 'center' },
+  infoBox: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, padding: 14 },
+  infoBoxText: { fontSize: 13, fontFamily: Fonts.regular, lineHeight: 18 },
   errorText: { fontSize: 13, fontFamily: Fonts.medium, textAlign: 'center', marginTop: 8 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 24 },
   btn: { flex: 1, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   btnOutline: { borderWidth: 1 },
   btnText: { fontSize: 15, fontFamily: Fonts.bold },
+});
+
+const promoStyles = StyleSheet.create({
+  card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, overflow: 'hidden' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
+  cardTitle: { flex: 1, fontSize: 14, fontFamily: Fonts.semiBold },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  badgeText: { fontSize: 11, fontFamily: Fonts.semiBold },
+  cardBody: { padding: 12, gap: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  fieldLabel: { fontSize: 13, fontFamily: Fonts.semiBold },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
+  chipText: { fontSize: 12, fontFamily: Fonts.medium },
+  dateRow: { flexDirection: 'row', gap: 10 },
+  activeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
 });
