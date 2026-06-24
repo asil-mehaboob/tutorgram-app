@@ -36,7 +36,8 @@ export type PrivacySettings = {
 };
 
 export async function getAccountSettings(): Promise<AccountSettings> {
-  return tutorApiRequest<AccountSettings>('/api/dashboard/settings/account');
+  const data = await tutorApiRequest<{ account: AccountSettings }>('/api/dashboard/settings');
+  return data.account;
 }
 
 export async function updateAccountSettings(data: Partial<AccountSettings>): Promise<AccountSettings> {
