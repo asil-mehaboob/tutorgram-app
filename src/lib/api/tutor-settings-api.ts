@@ -16,7 +16,7 @@ export type NotificationSettings = {
   marketingEmails: boolean;
 };
 
-export type PaymentMethod = 'BANK' | 'UPI' | 'PAYPAL';
+export type PaymentMethod = 'BANK';
 
 export type ProfileVisibility = 'public' | 'students only' | 'private';
 
@@ -25,8 +25,7 @@ export type PaymentSettings = {
   bankAccount: string | null;
   ifscCode: string | null;
   accountHolder: string | null;
-  upiId: string | null;
-  paypalEmail: string | null;
+  upiId: null;
 };
 
 export type PrivacySettings = {
