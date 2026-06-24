@@ -8,13 +8,12 @@ import { Fonts, Spacing } from '@/constants/theme';
 import { getTutorNotificationPrefs, updateTutorNotificationPrefs } from '@/lib/api/tutor-settings-api';
 import type { NotificationSettings } from '@/lib/api/tutor-settings-api';
 
-const PREFS: { key: keyof NotificationSettings; label: string; desc: string }[] = [
-  { key: 'courseEnrollments', label: 'New Enrollments', desc: 'When a student enrolls in your course' },
-  { key: 'newReviews', label: 'New Reviews', desc: 'When a student leaves a review' },
-  { key: 'newMessages', label: 'Messages', desc: 'When a student sends you a message' },
-  { key: 'newQuestions', label: 'Q&A', desc: 'When a student asks a question' },
-  { key: 'payoutAlerts', label: 'Payout Alerts', desc: 'Earnings and payout notifications' },
-  { key: 'platformUpdates', label: 'Platform Updates', desc: 'Important updates about the platform' },
+const PREFS: { key: keyof NotificationSettings; label: string; desc: string; disabled?: boolean }[] = [
+  { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive notifications via email' },
+  { key: 'pushNotifications', label: 'Push Notifications', desc: 'Coming soon', disabled: true },
+  { key: 'courseUpdates', label: 'Course Updates', desc: 'When students enroll or leave reviews' },
+  { key: 'studentMessages', label: 'Student Messages', desc: 'When a student sends you a message' },
+  { key: 'paymentAlerts', label: 'Payment Alerts', desc: 'Earnings and payout notifications' },
   { key: 'marketingEmails', label: 'Marketing Emails', desc: 'Tips, promotions, and newsletters' },
 ];
 
@@ -38,21 +37,36 @@ export default function SettingsNotifications() {
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}><ArrowLeft size={22} color={theme.text} weight="regular" /></Pressable>
+        <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}>
+          <ArrowLeft size={22} color={theme.text} weight="regular" />
+        </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Notifications</Text>
       </View>
+
       {isLoading ? (
         <View style={styles.center}><ActivityIndicator color={theme.primary} size="large" /></View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={[styles.group, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             {PREFS.map((p, i) => (
-              <View key={p.key} style={[styles.row, { borderBottomColor: theme.border, borderBottomWidth: i < PREFS.length - 1 ? StyleSheet.hairlineWidth : 0 }]}>
+              <View
+                key={p.key}
+                style={[
+                  styles.row,
+                  { borderBottomColor: theme.border, borderBottomWidth: i < PREFS.length - 1 ? StyleSheet.hairlineWidth : 0 },
+                  p.disabled && { opacity: 0.45 },
+                ]}
+              >
                 <View style={styles.rowText}>
                   <Text style={[styles.rowLabel, { color: theme.text }]}>{p.label}</Text>
                   <Text style={[styles.rowDesc, { color: theme.textSecondary }]}>{p.desc}</Text>
                 </View>
-                <Switch value={data?.[p.key] ?? false} onValueChange={() => toggle(p.key)} trackColor={{ true: theme.primary }} />
+                <Switch
+                  value={data?.[p.key] ?? false}
+                  onValueChange={() => toggle(p.key)}
+                  trackColor={{ true: theme.primary }}
+                  disabled={p.disabled}
+                />
               </View>
             ))}
           </View>

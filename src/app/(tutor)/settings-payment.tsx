@@ -24,8 +24,8 @@ export default function SettingsPayment() {
 
   const [method, setMethod] = useState<PaymentMethod>('UPI');
   const [bankAccount, setBankAccount] = useState('');
-  const [bankRouting, setBankRouting] = useState('');
-  const [bankName, setBankName] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [accountHolder, setAccountHolder] = useState('');
   const [upiId, setUpiId] = useState('');
   const [paypalEmail, setPaypalEmail] = useState('');
 
@@ -33,10 +33,10 @@ export default function SettingsPayment() {
 
   useEffect(() => {
     if (data) {
-      if (data.method) setMethod(data.method);
-      setBankAccount(data.bankAccountNumber ?? '');
-      setBankRouting(data.bankRoutingNumber ?? '');
-      setBankName(data.bankAccountName ?? '');
+      if (data.paymentMethod) setMethod(data.paymentMethod);
+      setBankAccount(data.bankAccount ?? '');
+      setIfscCode(data.ifscCode ?? '');
+      setAccountHolder(data.accountHolder ?? '');
       setUpiId(data.upiId ?? '');
       setPaypalEmail(data.paypalEmail ?? '');
     }
@@ -44,10 +44,10 @@ export default function SettingsPayment() {
 
   const mutation = useMutation({
     mutationFn: () => updatePaymentSettings({
-      method,
-      bankAccountNumber: method === 'BANK' ? bankAccount : null,
-      bankRoutingNumber: method === 'BANK' ? bankRouting : null,
-      bankAccountName: method === 'BANK' ? bankName : null,
+      paymentMethod: method,
+      bankAccount: method === 'BANK' ? bankAccount : null,
+      ifscCode: method === 'BANK' ? ifscCode : null,
+      accountHolder: method === 'BANK' ? accountHolder : null,
       upiId: method === 'UPI' ? upiId : null,
       paypalEmail: method === 'PAYPAL' ? paypalEmail : null,
     }),
@@ -58,7 +58,9 @@ export default function SettingsPayment() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.root, { backgroundColor: theme.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-          <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}><ArrowLeft size={22} color={theme.text} weight="regular" /></Pressable>
+          <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}>
+            <ArrowLeft size={22} color={theme.text} weight="regular" />
+          </Pressable>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Payment Settings</Text>
         </View>
 
@@ -72,7 +74,10 @@ export default function SettingsPayment() {
                 <Pressable
                   key={m.key}
                   onPress={() => setMethod(m.key)}
-                  style={[styles.methodBtn, { borderColor: method === m.key ? theme.primary : theme.border, backgroundColor: method === m.key ? theme.primaryLight : theme.surface }]}
+                  style={[
+                    styles.methodBtn,
+                    { borderColor: method === m.key ? theme.primary : theme.border, backgroundColor: method === m.key ? theme.primaryLight : theme.surface },
+                  ]}
                 >
                   {m.icon}
                   <Text style={[styles.methodLabel, { color: method === m.key ? theme.primary : theme.text }]}>{m.label}</Text>
@@ -83,8 +88,8 @@ export default function SettingsPayment() {
             {method === 'BANK' && (
               <>
                 <Input label="Account Number" value={bankAccount} onChangeText={setBankAccount} placeholder="Your bank account number" keyboardType="numeric" />
-                <Input label="IFSC / Routing Number" value={bankRouting} onChangeText={setBankRouting} placeholder="IFSC code" />
-                <Input label="Account Holder Name" value={bankName} onChangeText={setBankName} placeholder="As per bank records" />
+                <Input label="IFSC Code" value={ifscCode} onChangeText={setIfscCode} placeholder="e.g. SBIN0001234" autoCapitalize="characters" />
+                <Input label="Account Holder Name" value={accountHolder} onChangeText={setAccountHolder} placeholder="As per bank records" autoCapitalize="words" />
               </>
             )}
             {method === 'UPI' && (
@@ -94,7 +99,9 @@ export default function SettingsPayment() {
               <Input label="PayPal Email" value={paypalEmail} onChangeText={setPaypalEmail} placeholder="paypal@email.com" autoCapitalize="none" keyboardType="email-address" />
             )}
 
-            {mutation.isError && <Text style={[styles.error, { color: theme.error }]}>Failed to save. Try again.</Text>}
+            {mutation.isError && (
+              <Text style={[styles.error, { color: theme.error }]}>Failed to save. Try again.</Text>
+            )}
             <Button label="Save Payment Settings" onPress={() => mutation.mutate()} loading={mutation.isPending} />
           </ScrollView>
         )}

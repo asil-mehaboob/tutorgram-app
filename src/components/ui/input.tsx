@@ -7,7 +7,7 @@ type InputProps = TextInputProps & {
   error?: string;
 };
 
-export function Input({ label, error, style, ...rest }: InputProps) {
+export function Input({ label, error, style, multiline, numberOfLines, ...rest }: InputProps) {
   const theme = useTheme();
 
   return (
@@ -16,6 +16,8 @@ export function Input({ label, error, style, ...rest }: InputProps) {
         <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
       )}
       <TextInput
+        multiline={multiline}
+        numberOfLines={numberOfLines}
         style={[
           styles.input,
           {
@@ -24,6 +26,7 @@ export function Input({ label, error, style, ...rest }: InputProps) {
             borderColor: error ? theme.error : theme.border,
             fontFamily: Fonts.medium,
           },
+          multiline && styles.multiline,
           style,
         ]}
         placeholderTextColor={theme.textSecondary}
@@ -50,6 +53,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: Spacing.three,
     fontSize: 15,
+  },
+  multiline: {
+    height: undefined,
+    minHeight: 52,
+    paddingTop: 14,
+    paddingBottom: 14,
+    textAlignVertical: 'top',
   },
   error: {
     fontSize: 12,

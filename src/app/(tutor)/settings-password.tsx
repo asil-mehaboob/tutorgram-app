@@ -18,6 +18,7 @@ export default function SettingsPassword() {
   const [confirm, setConfirm] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
 
   const mutation = useMutation({
@@ -27,9 +28,13 @@ export default function SettingsPassword() {
   });
 
   function validate() {
-    if (!current) return setError('Current password is required'), false;
-    if (newPass.length < 8) return setError('New password must be at least 8 characters'), false;
-    if (newPass !== confirm) return setError('Passwords do not match'), false;
+    if (!current) { setError('Current password is required'); return false; }
+    if (newPass.length < 8) { setError('New password must be at least 8 characters'); return false; }
+    if (!/[A-Z]/.test(newPass) || !/[a-z]/.test(newPass) || !/[0-9]/.test(newPass)) {
+      setError('Password must include uppercase, lowercase, and a number');
+      return false;
+    }
+    if (newPass !== confirm) { setError('Passwords do not match'); return false; }
     setError('');
     return true;
   }
@@ -58,7 +63,10 @@ export default function SettingsPassword() {
             <Input label="New Password" value={newPass} onChangeText={setNewPass} secureTextEntry={!showNew} />
             <EyeIcon show={showNew} onToggle={() => setShowNew(!showNew)} />
           </View>
-          <Input label="Confirm New Password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showNew} />
+          <View style={styles.inputWrap}>
+            <Input label="Confirm New Password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showConfirm} />
+            <EyeIcon show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
+          </View>
           {error ? <Text style={[styles.error, { color: theme.error }]}>{error}</Text> : null}
           <Button label="Update Password" onPress={handleSubmit} loading={mutation.isPending} />
         </ScrollView>

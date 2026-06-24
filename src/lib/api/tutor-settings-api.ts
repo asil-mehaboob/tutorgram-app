@@ -1,33 +1,36 @@
 import { tutorApiRequest } from './tutor-client';
 
 export type AccountSettings = {
-  name: string;
+  fullName: string;
   email: string;
+  phone: string | null;
+  bio: string | null;
 };
 
 export type NotificationSettings = {
-  courseEnrollments: boolean;
-  newReviews: boolean;
-  newMessages: boolean;
-  newQuestions: boolean;
-  payoutAlerts: boolean;
-  platformUpdates: boolean;
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  courseUpdates: boolean;
+  studentMessages: boolean;
+  paymentAlerts: boolean;
   marketingEmails: boolean;
 };
 
 export type PaymentMethod = 'BANK' | 'UPI' | 'PAYPAL';
 
+export type ProfileVisibility = 'public' | 'students only' | 'private';
+
 export type PaymentSettings = {
-  method: PaymentMethod | null;
-  bankAccountNumber: string | null;
-  bankRoutingNumber: string | null;
-  bankAccountName: string | null;
+  paymentMethod: PaymentMethod | null;
+  bankAccount: string | null;
+  ifscCode: string | null;
+  accountHolder: string | null;
   upiId: string | null;
   paypalEmail: string | null;
 };
 
 export type PrivacySettings = {
-  profileVisible: boolean;
+  profileVisibility: ProfileVisibility;
   showEmail: boolean;
   showPhone: boolean;
 };
@@ -37,11 +40,11 @@ export async function getAccountSettings(): Promise<AccountSettings> {
 }
 
 export async function updateAccountSettings(data: Partial<AccountSettings>): Promise<AccountSettings> {
-  return tutorApiRequest<AccountSettings>('/api/dashboard/settings/account', { method: 'PATCH', body: data });
+  return tutorApiRequest<AccountSettings>('/api/dashboard/settings/account', { method: 'PUT', body: data });
 }
 
 export async function changeTutorPassword(data: { currentPassword: string; newPassword: string }): Promise<void> {
-  await tutorApiRequest('/api/dashboard/settings/password', { method: 'POST', body: data });
+  await tutorApiRequest('/api/dashboard/settings/password', { method: 'PUT', body: data });
 }
 
 export async function getTutorNotificationPrefs(): Promise<NotificationSettings> {
@@ -49,7 +52,7 @@ export async function getTutorNotificationPrefs(): Promise<NotificationSettings>
 }
 
 export async function updateTutorNotificationPrefs(data: Partial<NotificationSettings>): Promise<NotificationSettings> {
-  return tutorApiRequest<NotificationSettings>('/api/dashboard/settings/notifications', { method: 'PATCH', body: data });
+  return tutorApiRequest<NotificationSettings>('/api/dashboard/settings/notifications', { method: 'PUT', body: data });
 }
 
 export async function getPaymentSettings(): Promise<PaymentSettings> {
@@ -57,7 +60,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
 }
 
 export async function updatePaymentSettings(data: Partial<PaymentSettings>): Promise<PaymentSettings> {
-  return tutorApiRequest<PaymentSettings>('/api/dashboard/settings/payment', { method: 'PATCH', body: data });
+  return tutorApiRequest<PaymentSettings>('/api/dashboard/settings/payment', { method: 'PUT', body: data });
 }
 
 export async function getPrivacySettings(): Promise<PrivacySettings> {
@@ -65,5 +68,5 @@ export async function getPrivacySettings(): Promise<PrivacySettings> {
 }
 
 export async function updatePrivacySettings(data: Partial<PrivacySettings>): Promise<PrivacySettings> {
-  return tutorApiRequest<PrivacySettings>('/api/dashboard/settings/privacy', { method: 'PATCH', body: data });
+  return tutorApiRequest<PrivacySettings>('/api/dashboard/settings/privacy', { method: 'PUT', body: data });
 }
