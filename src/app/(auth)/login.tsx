@@ -240,6 +240,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 error={errors.password}
+                style={{ paddingRight: 44 }}
               />
               <Pressable
                 onPress={() => setShowPassword((v) => !v)}

@@ -401,6 +401,7 @@ export default function SignupScreen() {
                   value={password}
                   onChangeText={setPassword}
                   error={errors.password}
+                  style={{ paddingRight: 44 }}
                 />
                 <Pressable
                   onPress={() => setShowPassword((v) => !v)}
