@@ -56,15 +56,15 @@ export default function SettingsPassword() {
         </View>
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.inputWrap}>
-            <Input label="Current Password" value={current} onChangeText={setCurrent} secureTextEntry={!showCurrent} />
+            <Input label="Current Password" value={current} onChangeText={setCurrent} secureTextEntry={!showCurrent} style={styles.passwordInput} />
             <EyeIcon show={showCurrent} onToggle={() => setShowCurrent(!showCurrent)} />
           </View>
           <View style={styles.inputWrap}>
-            <Input label="New Password" value={newPass} onChangeText={setNewPass} secureTextEntry={!showNew} />
+            <Input label="New Password" value={newPass} onChangeText={setNewPass} secureTextEntry={!showNew} style={styles.passwordInput} />
             <EyeIcon show={showNew} onToggle={() => setShowNew(!showNew)} />
           </View>
           <View style={styles.inputWrap}>
-            <Input label="Confirm New Password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showConfirm} />
+            <Input label="Confirm New Password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showConfirm} style={styles.passwordInput} />
             <EyeIcon show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
           </View>
           {error ? <Text style={[styles.error, { color: theme.error }]}>{error}</Text> : null}
@@ -82,6 +82,7 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 18, fontFamily: Fonts.bold },
   scroll: { padding: Spacing.three, gap: 14 },
   inputWrap: { position: 'relative' },
+  passwordInput: { paddingRight: 44 },
   eyeBtn: { position: 'absolute', right: 14, bottom: 16 },
   error: { fontSize: 13, fontFamily: Fonts.regular, textAlign: 'center' },
 });
