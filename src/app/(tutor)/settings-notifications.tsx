@@ -31,7 +31,7 @@ export default function SettingsNotifications() {
 
   function toggle(key: keyof NotificationSettings) {
     if (!data) return;
-    mutation.mutate({ [key]: !data[key] });
+    mutation.mutate({ ...data, [key]: !data[key] });
   }
 
   return (

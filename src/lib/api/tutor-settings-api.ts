@@ -48,7 +48,8 @@ export async function changeTutorPassword(data: { currentPassword: string; newPa
 }
 
 export async function getTutorNotificationPrefs(): Promise<NotificationSettings> {
-  return tutorApiRequest<NotificationSettings>('/api/dashboard/settings/notifications');
+  const data = await tutorApiRequest<{ notifications: NotificationSettings }>('/api/dashboard/settings');
+  return data.notifications;
 }
 
 export async function updateTutorNotificationPrefs(data: Partial<NotificationSettings>): Promise<NotificationSettings> {

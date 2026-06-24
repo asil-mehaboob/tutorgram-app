@@ -1,18 +1,26 @@
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle, Crown } from 'phosphor-react-native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, CheckCircle, Crown, Tag, X } from 'phosphor-react-native';
 import { router } from 'expo-router';
+import RazorpayCheckout from 'react-native-razorpay';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth/context';
+import { useDialog } from '@/lib/dialog/context';
 import { Fonts, Spacing } from '@/constants/theme';
-import { getUserPlan } from '@/lib/api/tutor-subscription';
+import {
+  getUserPlan,
+  createSubscription,
+  verifySubscription,
+  validateCoupon,
+} from '@/lib/api/tutor-subscription';
 
 type BillingCycle = 'monthly' | 'yearly';
 
 const PLANS = [
   {
-    key: 'STARTER',
+    key: 'starter',
     name: 'Starter',
     monthlyPrice: 2499,
     yearlyPrice: 11999,
@@ -25,7 +33,7 @@ const PLANS = [
     ],
   },
   {
-    key: 'PRO',
+    key: 'pro',
     name: 'Pro',
     monthlyPrice: 3499,
     yearlyPrice: 26999,
@@ -45,7 +53,17 @@ const PLANS = [
 export default function TutorSubscription() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+  const { showDialog } = useDialog();
+  const { state: authState } = useAuth();
+  const user = authState.status === 'authenticated' ? authState.user : null;
+
   const [billing, setBilling] = useState<BillingCycle>('monthly');
+  const [couponCode, setCouponCode] = useState('');
+  const [couponId, setCouponId] = useState<string | null>(null);
+  const [couponInfo, setCouponInfo] = useState<{ code: string; discount: number } | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [loadingPlanKey, setLoadingPlanKey] = useState<string | null>(null);
 
   const { data: plan, isLoading } = useQuery({
     queryKey: ['tutor-plan'],
@@ -53,10 +71,90 @@ export default function TutorSubscription() {
     staleTime: 5 * 60_000,
   });
 
+  // Init billing toggle from active plan
+  useEffect(() => {
+    if (plan?.billingCycle) setBilling(plan.billingCycle);
+  }, [plan?.billingCycle]);
+
+  const couponMutation = useMutation({
+    mutationFn: () => validateCoupon(couponCode.trim().toUpperCase()),
+    onSuccess: (data) => {
+      if (data.valid && data.coupon) {
+        setCouponId(data.coupon.id);
+        setCouponInfo({ code: data.coupon.code, discount: data.coupon.discountValue });
+        setCouponError('');
+      } else {
+        setCouponError('Invalid or expired coupon code');
+        setCouponId(null);
+        setCouponInfo(null);
+      }
+    },
+    onError: () => {
+      setCouponError('Failed to validate coupon. Try again.');
+      setCouponId(null);
+      setCouponInfo(null);
+    },
+  });
+
+  function clearCoupon() {
+    setCouponCode('');
+    setCouponId(null);
+    setCouponInfo(null);
+    setCouponError('');
+  }
+
+  async function handleSubscribe(planKey: string) {
+    setLoadingPlanKey(planKey);
+    try {
+      const order = await createSubscription({ planKey, couponId: couponId ?? undefined });
+
+      const paymentData = await RazorpayCheckout.open({
+        key: order.keyId,
+        subscription_id: order.subscriptionId,
+        name: 'Tutorgram',
+        description: `${planKey.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Plan`,
+        currency: 'INR',
+        prefill: {
+          name: user?.name ?? '',
+          email: user?.email ?? '',
+          contact: '',
+        },
+        theme: { color: theme.primary },
+      });
+
+      await verifySubscription({
+        razorpay_payment_id: paymentData.razorpay_payment_id,
+        razorpay_subscription_id: paymentData.razorpay_subscription_id,
+        razorpay_signature: paymentData.razorpay_signature,
+      });
+
+      await qc.invalidateQueries({ queryKey: ['tutor-plan'] });
+      await qc.invalidateQueries({ queryKey: ['tutor-profile'] });
+
+      showDialog({
+        title: 'Subscription Active!',
+        message: 'Your plan is now active. Enjoy all the features.',
+        type: 'success',
+        actions: [{ label: 'Done', onPress: () => router.back() }],
+      });
+    } catch (err: unknown) {
+      // Razorpay returns code 0 for user cancellation
+      const rzpErr = err as { code?: number; description?: string };
+      if (rzpErr?.code === 0) return;
+      showDialog({
+        title: 'Payment Failed',
+        message: rzpErr?.description ?? (err instanceof Error ? err.message : 'Something went wrong.'),
+        type: 'error',
+      });
+    } finally {
+      setLoadingPlanKey(null);
+    }
+  }
+
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.back}>
+        <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}>
           <ArrowLeft size={22} color={theme.text} weight="regular" />
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Subscription</Text>
@@ -67,8 +165,8 @@ export default function TutorSubscription() {
           <ActivityIndicator color={theme.primary} size="large" />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Current plan banner */}
+        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
+          {/* Active plan banner */}
           {plan?.isPaid && (
             <View style={[styles.currentBanner, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
               <Crown size={20} color={theme.primary} weight="fill" />
@@ -101,10 +199,50 @@ export default function TutorSubscription() {
             </Pressable>
           </View>
 
+          {/* Coupon code row */}
+          {!plan?.isPaid && (
+            <View style={styles.couponWrap}>
+              {couponInfo ? (
+                <View style={[styles.couponApplied, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
+                  <Tag size={14} color={theme.primary} weight="fill" />
+                  <Text style={[styles.couponAppliedText, { color: theme.primary }]}>
+                    {couponInfo.code} — {couponInfo.discount}% off applied
+                  </Text>
+                  <Pressable onPress={clearCoupon} hitSlop={8}>
+                    <X size={14} color={theme.primary} weight="bold" />
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.couponRow}>
+                  <TextInput
+                    value={couponCode}
+                    onChangeText={(v) => { setCouponCode(v); setCouponError(''); }}
+                    placeholder="Coupon code"
+                    placeholderTextColor={theme.textSecondary}
+                    autoCapitalize="characters"
+                    style={[styles.couponInput, { backgroundColor: theme.surface, borderColor: couponError ? theme.error : theme.border, color: theme.text }]}
+                  />
+                  <Pressable
+                    onPress={() => couponMutation.mutate()}
+                    disabled={!couponCode.trim() || couponMutation.isPending}
+                    style={[styles.couponBtn, { backgroundColor: theme.primary, opacity: !couponCode.trim() ? 0.5 : 1 }]}
+                  >
+                    <Text style={styles.couponBtnText}>{couponMutation.isPending ? '…' : 'Apply'}</Text>
+                  </Pressable>
+                </View>
+              )}
+              {!!couponError && (
+                <Text style={[styles.couponError, { color: theme.error }]}>{couponError}</Text>
+              )}
+            </View>
+          )}
+
           {/* Plan cards */}
           {PLANS.map((p) => {
             const price = billing === 'monthly' ? p.monthlyPrice : p.yearlyPrice;
-            const isActive = plan?.isPaid && plan.planName?.toUpperCase() === p.name.toUpperCase();
+            const planKey = `${p.key}_${billing}`;
+            const isActive = plan?.isPaid && plan.planKey === planKey;
+            const isLoading = loadingPlanKey === planKey;
 
             return (
               <View
@@ -113,11 +251,17 @@ export default function TutorSubscription() {
                   styles.planCard,
                   { backgroundColor: theme.surface, borderColor: p.recommended ? theme.primary : theme.border },
                   p.recommended && styles.planCardRecommended,
+                  isActive && { borderColor: theme.primary, borderWidth: 2 },
                 ]}
               >
-                {p.recommended && (
+                {p.recommended && !isActive && (
                   <View style={[styles.recommendedBadge, { backgroundColor: theme.primary }]}>
                     <Text style={styles.recommendedText}>Most Popular</Text>
+                  </View>
+                )}
+                {isActive && (
+                  <View style={[styles.recommendedBadge, { backgroundColor: theme.success }]}>
+                    <Text style={styles.recommendedText}>Your Plan</Text>
                   </View>
                 )}
                 <View style={styles.planHeader}>
@@ -145,14 +289,20 @@ export default function TutorSubscription() {
                   </View>
                 ) : (
                   <Pressable
+                    onPress={() => handleSubscribe(planKey)}
+                    disabled={!!loadingPlanKey}
                     style={({ pressed }) => [
                       styles.subscribeBtn,
-                      { backgroundColor: p.recommended ? theme.primary : theme.surface, borderColor: theme.primary, opacity: pressed ? 0.85 : 1 },
+                      { backgroundColor: p.recommended ? theme.primary : theme.surface, borderColor: theme.primary, opacity: (pressed || !!loadingPlanKey) ? 0.75 : 1 },
                     ]}
                   >
-                    <Text style={[styles.subscribeBtnText, { color: p.recommended ? '#fff' : theme.primary }]}>
-                      {plan?.isPaid ? 'Switch Plan' : 'Get Started'}
-                    </Text>
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={p.recommended ? '#fff' : theme.primary} />
+                    ) : (
+                      <Text style={[styles.subscribeBtnText, { color: p.recommended ? '#fff' : theme.primary }]}>
+                        {plan?.isPaid ? 'Switch Plan' : 'Get Started'}
+                      </Text>
+                    )}
                   </Pressable>
                 )}
               </View>
@@ -170,61 +320,29 @@ export default function TutorSubscription() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: Spacing.three,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: Spacing.three, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   back: { padding: 4 },
   headerTitle: { fontSize: 18, fontFamily: Fonts.bold },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll: { padding: Spacing.three, gap: 16 },
-  currentBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
+  currentBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10, borderWidth: 1 },
   currentText: { fontSize: 14, fontFamily: Fonts.semiBold },
-  billingToggle: {
-    flexDirection: 'row',
-    borderRadius: 12,
-    padding: 4,
-    gap: 4,
-  },
-  toggleBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
+  billingToggle: { flexDirection: 'row', borderRadius: 12, padding: 4, gap: 4 },
+  toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10 },
   toggleText: { fontSize: 14, fontFamily: Fonts.semiBold },
   saveBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   saveText: { fontSize: 10, fontFamily: Fonts.bold },
-  planCard: {
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 20,
-    gap: 16,
-    overflow: 'hidden',
-  },
+  couponWrap: { gap: 6 },
+  couponRow: { flexDirection: 'row', gap: 8 },
+  couponInput: { flex: 1, height: 44, borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, fontSize: 14, fontFamily: Fonts.medium },
+  couponBtn: { height: 44, paddingHorizontal: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  couponBtnText: { fontSize: 14, fontFamily: Fonts.bold, color: '#fff' },
+  couponApplied: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, borderWidth: 1 },
+  couponAppliedText: { flex: 1, fontSize: 13, fontFamily: Fonts.semiBold },
+  couponError: { fontSize: 12, fontFamily: Fonts.regular },
+  planCard: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 20, gap: 16, overflow: 'hidden' },
   planCardRecommended: { borderWidth: 1.5 },
-  recommendedBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderBottomLeftRadius: 10,
-  },
+  recommendedBadge: { position: 'absolute', top: 0, right: 0, paddingHorizontal: 12, paddingVertical: 5, borderBottomLeftRadius: 10 },
   recommendedText: { fontSize: 11, fontFamily: Fonts.bold, color: '#fff' },
   planHeader: { gap: 4, marginTop: 8 },
   planName: { fontSize: 20, fontFamily: Fonts.extraBold },
@@ -234,18 +352,9 @@ const styles = StyleSheet.create({
   featureList: { gap: 10 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   featureText: { fontSize: 14, fontFamily: Fonts.regular },
-  subscribeBtn: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1.5,
-  },
+  subscribeBtn: { paddingVertical: 14, borderRadius: 10, alignItems: 'center', borderWidth: 1.5 },
   subscribeBtnText: { fontSize: 15, fontFamily: Fonts.bold },
-  activeBtn: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
+  activeBtn: { paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
   activeBtnText: { fontSize: 15, fontFamily: Fonts.semiBold },
   disclaimer: { fontSize: 12, fontFamily: Fonts.regular, textAlign: 'center', lineHeight: 18 },
 });
