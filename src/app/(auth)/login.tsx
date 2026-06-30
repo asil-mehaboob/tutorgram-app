@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -276,9 +277,20 @@ export default function LoginScreen() {
 
           <Text style={[styles.legal, { color: theme.textSecondary }]}>
             By continuing you agree to our{' '}
-            <Text style={{ color: theme.text }}>Terms of Service</Text>
+            <Text
+              style={{ color: theme.primary }}
+              onPress={() => Linking.openURL('https://mytutorgram.com/terms')}
+            >
+              Terms of Service
+            </Text>
             {' '}and{' '}
-            <Text style={{ color: theme.text }}>Privacy Policy</Text>.
+            <Text
+              style={{ color: theme.primary }}
+              onPress={() => Linking.openURL('https://mytutorgram.com/privacy-policy')}
+            >
+              Privacy Policy
+            </Text>
+            .
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -5,8 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import {
   PencilSimple, Briefcase, GraduationCap, Certificate, Trophy, Wrench, LinkSimple,
   Gear, Lock, Bell, CreditCard, ShieldCheck, Crown, ArrowUpRight,
-  Question, FileText, SignOut, CaretRight,
-  BookOpen, Student, Star, IdentificationCard,
+  Question, FileText, Shield, SignOut, CaretRight,
+  BookOpen, Student, Star, IdentificationCard, Globe,
 } from 'phosphor-react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
@@ -205,9 +205,11 @@ export default function TutorAccount() {
           </MenuGroup>
 
           <MenuGroup title="SUPPORT">
-            <MenuItem icon={Question} label="Help Centre" onPress={() => Linking.openURL('https://tutorgram.com/help')} />
-            <MenuItem icon={ShieldCheck} label="Privacy Policy" onPress={() => Linking.openURL('https://tutorgram.com/privacy-policy')} />
-            <MenuItem icon={FileText} label="Terms of Service" onPress={() => Linking.openURL('https://tutorgram.com/terms')} isLast />
+            <MenuItem icon={Question} label="Help Centre" onPress={() => Linking.openURL('https://mytutorgram.com/help')} />
+            <MenuItem icon={Shield} label="Privacy Policy" onPress={() => Linking.openURL('https://mytutorgram.com/privacy-policy')} />
+            <MenuItem icon={FileText} label="Terms of Service" onPress={() => Linking.openURL('https://mytutorgram.com/terms')} />
+            <MenuItem icon={FileText} label="Refund Policy" onPress={() => Linking.openURL('https://mytutorgram.com/refund-policy')} />
+            <MenuItem icon={Globe} label="Cookie Policy" onPress={() => Linking.openURL('https://mytutorgram.com/cookies')} isLast />
           </MenuGroup>
 
           <View style={[styles.menuGroupCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>

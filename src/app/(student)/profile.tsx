@@ -19,6 +19,7 @@ import {
   CheckCircle,
   Trophy,
   Clock,
+  Globe,
 } from 'phosphor-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/hooks/use-theme';
@@ -234,6 +235,11 @@ export default function ProfileScreen() {
               icon={FileText}
               label="Refund Policy"
               onPress={() => Linking.openURL('https://mytutorgram.com/refund-policy')}
+            />
+            <MenuItem
+              icon={Globe}
+              label="Cookie Policy"
+              onPress={() => Linking.openURL('https://mytutorgram.com/cookies')}
               isLast
             />
           </MenuGroup>

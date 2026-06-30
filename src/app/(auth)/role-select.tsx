@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -104,9 +104,20 @@ export default function RoleSelectScreen() {
 
         <Text style={[styles.legal, { color: theme.textSecondary }]}>
           By continuing you agree to our{' '}
-          <Text style={{ color: theme.text }}>Terms of Service</Text>
+          <Text
+            style={{ color: theme.primary }}
+            onPress={() => Linking.openURL('https://mytutorgram.com/terms')}
+          >
+            Terms of Service
+          </Text>
           {' '}and{' '}
-          <Text style={{ color: theme.text }}>Privacy Policy</Text>.
+          <Text
+            style={{ color: theme.primary }}
+            onPress={() => Linking.openURL('https://mytutorgram.com/privacy-policy')}
+          >
+            Privacy Policy
+          </Text>
+          .
         </Text>
       </View>
     </View>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -447,6 +448,24 @@ export default function SignupScreen() {
               <Text style={[styles.footerLink, { color: theme.primary }]}>Log in</Text>
             </Pressable>
           </View>
+
+          <Text style={[styles.legal, { color: theme.textSecondary }]}>
+            By continuing you agree to our{' '}
+            <Text
+              style={{ color: theme.primary }}
+              onPress={() => Linking.openURL('https://mytutorgram.com/terms')}
+            >
+              Terms of Service
+            </Text>
+            {' '}and{' '}
+            <Text
+              style={{ color: theme.primary }}
+              onPress={() => Linking.openURL('https://mytutorgram.com/privacy-policy')}
+            >
+              Privacy Policy
+            </Text>
+            .
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -593,4 +612,10 @@ const styles = StyleSheet.create({
   },
   footerText: { fontSize: 14, fontFamily: Fonts.regular },
   footerLink: { fontSize: 14, fontFamily: Fonts.bold },
+  legal: {
+    fontSize: 11,
+    fontFamily: Fonts.regular,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
 });
