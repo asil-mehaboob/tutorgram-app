@@ -464,8 +464,6 @@ export default function CourseLearnScreen() {
 
   // Orientation handling
   useEffect(() => {
-    ScreenOrientation.unlockAsync();
-
     const sub = ScreenOrientation.addOrientationChangeListener((evt) => {
       const o = evt.orientationInfo.orientation;
       setIsLandscape(
@@ -489,11 +487,9 @@ export default function CourseLearnScreen() {
 
   function toggleFullscreen() {
     if (isLandscape) {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
-        .then(() => setTimeout(() => ScreenOrientation.unlockAsync(), 1000));
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
     } else {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE)
-        .then(() => setTimeout(() => ScreenOrientation.unlockAsync(), 1000));
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
     }
   }
 
