@@ -36,7 +36,7 @@ export async function tutorApiRequest<T>(path: string, init?: RequestInit_): Pro
   if (!init?.skipAuth) {
     const token = init?.token ?? await getSession();
     if (token) {
-      headers['Cookie'] = `authjs.session-token=${token}`;
+      headers['Cookie'] = `authjs.session-token=${token}; __Secure-authjs.session-token=${token}`;
     }
   }
 
