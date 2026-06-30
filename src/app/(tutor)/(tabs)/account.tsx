@@ -6,7 +6,7 @@ import {
   PencilSimple, Briefcase, GraduationCap, Certificate, Trophy, Wrench, LinkSimple,
   Gear, Lock, Bell, CreditCard, ShieldCheck, Crown, ArrowUpRight,
   Question, FileText, SignOut, CaretRight,
-  BookOpen, Student, Star,
+  BookOpen, Student, Star, IdentificationCard,
 } from 'phosphor-react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
@@ -174,6 +174,10 @@ export default function TutorAccount() {
             <MenuItem icon={Trophy} label="Awards & Honors" onPress={() => router.push('/(tutor)/profile-awards')} />
             <MenuItem icon={Wrench} label="Services" onPress={() => router.push('/(tutor)/profile-services')} />
             <MenuItem icon={LinkSimple} label="Social Links" onPress={() => router.push('/(tutor)/profile-social-links')} isLast />
+          </MenuGroup>
+
+          <MenuGroup title="DOCUMENTS">
+            <MenuItem icon={IdentificationCard} label="ID Card" subtitle="View & download your ID card" onPress={() => router.push('/(tutor)/id-card')} isLast />
           </MenuGroup>
 
           <MenuGroup title="SETTINGS">
